@@ -11,10 +11,11 @@ from torch import nn
 import torch
 from PIL import Image
 
-MAX_IMAGE_TENSOR = 8
+MAX_IMAGE_TENSOR = 20
 IMG_WIDTH = 320
 IMG_HEIGHT = 128
 IMG_CHANNEL = 3
+MAX_LABELS = 30
 
 
 def gen_onehot(labels, num_classes):
@@ -63,7 +64,7 @@ class DrosophilaTrainImageDataset(Dataset):
                 # Padding remaining tensors with all-zero images
                 tensors.append(torch.zeros(
                     (IMG_CHANNEL, IMG_HEIGHT, IMG_WIDTH)))
-        return (torch.stack(tensors), gen_onehot(labels, 30))
+        return (torch.stack(tensors), gen_onehot(labels, MAX_LABELS))
 
 
 def main(args):

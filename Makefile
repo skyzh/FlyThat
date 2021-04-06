@@ -9,3 +9,9 @@ run_data_parser:
 
 run_dataset:
 	python -m fly_bitch dataset
+
+run_model:
+	python -m fly_bitch model
+
+run_train:
+	python -m fly_bitch train
