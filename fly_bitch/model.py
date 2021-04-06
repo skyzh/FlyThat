@@ -21,10 +21,14 @@ class NeuralNetwork(nn.Module):
         )
 
     def forward(self, x):
-        x = self.feature(x)
-        x = self.aggreagate(x)
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
+        nXs = []
+        for X in x:
+            X = self.feature(X)
+            X = self.aggregate(X)
+            X = self.flatten(X)
+            nXs.append(X)
+        nXs = torch.cat(nXs, dim=0)
+        logits = self.linear_relu_stack(nXs)
         return logits
 
 
