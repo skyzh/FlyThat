@@ -22,6 +22,7 @@ class NeuralNetwork(nn.Module):
 
     def forward(self, x):
         nXs = []
+
         for X in x:
             X = self.feature(X)
             X = self.aggregate(X)
