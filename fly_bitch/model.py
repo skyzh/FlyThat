@@ -21,14 +21,18 @@ class NeuralNetwork(nn.Module):
         )
 
     def forward(self, x):
-        nXs = []
 
+        batch_size, ninstance, c, h, w = x.shape
+        x = x.view(batch_size * ninstance, c, h, w)
+        x = self.feature(x)
+        _, c, h, w = x.shape
+        x = x.view(batch_size, ninstance, c, h, w)
+        nXs = []
         for X in x:
-            X = self.feature(X)
             X = self.aggregate(X)
-            X = self.flatten(X)
             nXs.append(X)
         nXs = torch.cat(nXs, dim=0)
+        nXs = self.flatten(nXs)
         logits = self.linear_relu_stack(nXs)
         return logits
 
