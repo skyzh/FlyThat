@@ -54,6 +54,8 @@ def main(args):
     device = utils.get_device()
     logger.info(f'Using {device} device')
     model = NeuralNetwork()
+    # Enable logging if you want to view internals of model shape
+    # model = NeuralNetwork(logging=True)
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
     epochs = 5
