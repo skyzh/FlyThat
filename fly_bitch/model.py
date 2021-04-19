@@ -21,7 +21,6 @@ class NeuralNetwork(nn.Module):
         )
 
     def forward(self, x):
-
         batch_size, ninstance, c, h, w = x.shape
         x = x.view(batch_size * ninstance, c, h, w)
         x = self.feature(x)

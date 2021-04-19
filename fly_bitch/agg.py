@@ -15,7 +15,7 @@ class L1Agg(nn.Module):
     # Convolution
     def __init__(self):
         super(L1Agg, self).__init__()
-        self.layer = nn.Sequential(nn.Conv2d(2, 1, 7, padding=3))
+        self.layer = nn.Conv2d(2, 1, 7, padding=3)
 
     def forward(self, x):
         return self.layer(x)
