@@ -94,7 +94,11 @@ class Agg_666(nn.Module):
         # (batch, items, c, w, h)
         batch, items, c, w, h = x.shape[0]
         cwh = c * w * h
-        while items > 1:
+        mask = torch.zeros(items).repeat(batch, 1)
+        src_ = torch.ones(batch).unsqueeze(1) * np.inf   # static const
+        # items 个东东要聚合 items-1 次
+        n = items
+        for _ in range(1, n):
             # (batch, items, c * w * h)
             t = x.reshape(batch, items, cwh)
             # 使用下面方法
@@ -107,6 +111,10 @@ class Agg_666(nn.Module):
             # sq_dist [batch, items, items] , sq_dist[9][2][3] 表示第10组中第3和第4个item之间的距离
             # 由于sq_dist[k][i][i] = 0，但要忽略它，需要把对角线设置为inf，即加上对角线为inf的矩阵
             sq_dist = sq_dist + torch.diag_embed(torch.ones(items) * np.inf).repeat(batch, 1, 1)
+            mask_row = mask.unsqueeze(1).repeat(1, items, 1)
+            mask_col = mask.unsqueeze(2).repeat(1, 1, items)
+            mask_matrix = mask_row + mask_col
+            sq_dist = sq_dist + mask_matrix
 
             sq_dist = sq_dist.view(batch, items * items)
             # indices shape[batch]
@@ -115,25 +123,39 @@ class Agg_666(nn.Module):
             # i_k = indices[k] // items
             # j_k = indices[k] % items
             # 即对于第k+1组对i和j聚合
-            index_i = indices // items
-            index_j = indices % items
+            # [batch, 1]
+            index_i = (indices // items).unsqueeze(1)
+            index_j = (indices % items).unsqueeze(1)
             # 为了调用gather函数，需要把index_i/j复制扩充为[batch, 1, cwh]
-            index_i = index_i.unsqueeze(1).unsqueeze(1).repeat(1, 1, cwh)
-            index_j = index_j.unsqueeze(1).unsqueeze(1).repeat(1, 1, cwh)
+            index_ii = index_i.unsqueeze(1).repeat(1, 1, cwh)
+            index_jj = index_j.unsqueeze(1).repeat(1, 1, cwh)
             # X_l/X_r [batch, c, w, h]
-            X_l = torch.gather(t, dim=1, index=index_i).reshape(batch, c, w, h)
-            X_r = torch.gather(t, dim=1, index=index_j).reshape(batch, c, w, h)
+            X_l = torch.gather(t, dim=1, index=index_ii).reshape(batch, c, w, h)
+            X_r = torch.gather(t, dim=1, index=index_jj).reshape(batch, c, w, h)
             # X即为新聚合成的item
+            # [batch, c, w, h]
             X = self.layer(X_l, X_r)
+            # [batch, 1, c, w, h]
+            X = X.unsqueeze(1)
+            # [batch, items + 1, c, w, h]
+            x = torch.cat((x, X), dim=1)
 
-            # 删去被用过的index_i和index_j，并往x里头加入X
-
-
-
-
+            # 对mask增加，然后往x里头加入X
+            # 对mask添加inf表示删去被用过的index_i和index_j
+            add_ = torch.zeros(1).repeat(batch, 1)
+            mask = torch.cat((mask, add_), dim=1)
+            mask = mask.scatter(1, index_i, src_)
+            mask = mask.scatter(1, index_j, src_)
+            # mask [batch, items + 1]   每组一个mask，inf代表已经被聚合过了
+            # [[0, 0, .., inf, .. , inf, 0, inf, ..]
+            #  [inf, 0, inf, .., inf, 0, inf, .., 0]
+            #  ...
+            #  [0, inf, 0, .., 0, inf, .., 0, inf]]
 
             items = x.shape[1]
         # end aggregate
+
+        return x[:, items-1]
         
 
 
@@ -215,13 +237,52 @@ def test_agg_666_agg():
     X_l = torch.gather(t, dim=1, index=index_i).reshape(batch, c, w, h)
     #reshape(batch, c, w, h)
     #X_r = torch.gather(x, dim=1, index=index_j)
+    X_l = X_l.unsqueeze(1)
+    print(x)
+    print(X_l)
     
-    print(t.shape)
-    print(X_l.shape)
+    x = torch.cat((x, X_l), dim = 1)
+    print(x)
+
+
+def test_agg_666_mask():
+    # [batch, items, c, w, h]
+    x = torch.randn(4, 5, 3, 2, 4)
+    batch, items, c, w, h = x.shape
+    # [batch, items, items]
+    # a = torch.diag_embed(torch.ones(items) * np.inf).repeat(batch, 1, 1)
+    
+    # 扩张为 [batch, items + 1, items + 1]
+    a = torch.diag_embed(torch.ones(items + 1) * np.inf).repeat(batch, 1, 1)
+    # init [batch, items]
+    mask = torch.zeros(items).repeat(batch, 1)
+
+    # add to [batch, items + 1]
+    src_ = torch.ones(batch).unsqueeze(1) * np.inf   # static
+    print(src_)
+    index_i = torch.tensor([4, 1, 2, 3]).unsqueeze(1)
+    add_ = torch.zeros(1).repeat(batch, 1)
+    mask = torch.cat((mask, add_), dim=1)
+    mask = mask.scatter(1, index_i, src_)
+    
+    print(mask.shape)
+    print(mask)
+    # 按行repeat
+    items = mask.shape[1]
+    # mask [batch, items]
+    mask_row = mask.unsqueeze(1).repeat(1, items, 1)
+    print (mask_row)
+    mask_col = mask.unsqueeze(2).repeat(1, 1, items)
+    print (mask_col)
+    mask_matrix = mask_row + mask_col
+    print(mask_matrix)
+    
 
 
 
-test_agg_666_agg()
+
+test_agg_666_mask()
+#test_agg_666_agg()
 #test_agg_666_diag_inf()
 #test_agg_666_calc_mindist()
 #test_agg_666_calc_dist()
