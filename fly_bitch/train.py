@@ -9,6 +9,9 @@ from .feature_extractor import feature_transformer
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
 
+import os
+import time
+
 
 def train(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
@@ -53,7 +56,11 @@ def main(args):
 
     device = utils.get_device()
     logger.info(f'Using {device} device')
+    # 这里就限制GPU保存，GPU上加载
     model = NeuralNetwork()
+    if os.path.exists('fly_bitch/model.pkl'):
+        model = torch.load('fly_bitch/model.pkl')
+        model.to(device)
     # Enable logging if you want to view internals of model shape
     # model = NeuralNetwork(logging=True)
     loss_fn = nn.BCELoss()
@@ -70,8 +77,16 @@ def main(args):
     train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
 
+    # seconds.xxxxx
+    last_time = time.time()
     for t in range(epochs):
         logger.info(f"Epoch {t+1}\n-------------------------------")
         train(train_dataloader, model, loss_fn, optimizer, device)
         test(test_dataloader, model, loss_fn, device)
+
+        now_time = time.time()
+        if now_time - last_time >= 1800.0:
+            last_time = now_time
+            torch.save(model, 'fly_bitch/model.pkl')
+
     logger.info("Done!")
