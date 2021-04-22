@@ -1,4 +1,4 @@
-MODEL_PATH = "fly_bitch/model.pkl"
+MODEL_PATH = "fly_bitch/model/model.pkl"
 TENSORBOARD_LOGS_PATH = "fly_bitch/runs/logs"
 
 test:

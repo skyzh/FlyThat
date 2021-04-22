@@ -53,7 +53,7 @@ def main(args):
     parser.add_argument('tensorboard_logs_path', type=str, nargs='?', help='Path of tensorboard logs',
                         default=str(Path() / 'fly_bitch/runs/logs'))
     parser.add_argument('model_path', type=str, nargs='?', help='Path of model',
-                        default=str(Path() / 'fly_bitch/model.pkl'))
+                        default=str(Path() / 'fly_bitch/model/model.pkl'))
     parser.add_argument('data_path', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
     args = parser.parse_args(args)
@@ -102,6 +102,6 @@ def main(args):
         now_time = time.time()
         if now_time - last_time >= 1800.0:
             last_time = now_time
-            torch.save(model, 'fly_bitch/model_{}_{}.pkl'.format(str(correct), str(test_loss)))
+            torch.save(model, 'fly_bitch/model/model_{}_{}.pkl'.format(str(correct), str(test_loss)))
 
     logger.info("Done!")
