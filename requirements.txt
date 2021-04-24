@@ -105,7 +105,11 @@ xz=5.2.5=h7b6447c_0
 zeromq=4.3.4=h2531618_0
 zlib=1.2.11=h7b6447c_3
 zstd=1.4.9=haebb681_0
-tensorboard=2.5.0=pypi_0
-tensorboard-data-server=0.6.0=pypi_0
-tensorboard-plugin-wit=1.8.0=pypi_0
-tensorboardx=2.2=pypi_0
+#tensorboard=2.5.0=pypi_0
+#tensorboard-data-server=0.6.0=pypi_0
+#tensorboard-plugin-wit=1.8.0=pypi_0
+#tensorboardx=2.2=pypi_0
+joblib=1.0.1=pyhd3eb1b0_0
+threadpoolctl=2.1.0=pyh5ca1d4c_0
+scikit-learn=0.24.1=py37ha9443f7_0
+ca-certificates=2021.4.13=h06a4308_1
