@@ -105,3 +105,7 @@ xz=5.2.5=h7b6447c_0
 zeromq=4.3.4=h2531618_0
 zlib=1.2.11=h7b6447c_3
 zstd=1.4.9=haebb681_0
+tensorboard=2.5.0=pypi_0
+tensorboard-data-server=0.6.0=pypi_0
+tensorboard-plugin-wit=1.8.0=pypi_0
+tensorboardx=2.2=pypi_0
