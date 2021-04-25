@@ -149,6 +149,6 @@ def main(args):
         if now_time - last_time >= 1800.0:
             last_time = now_time
             torch.save(
-                model, 'fly_bitch/model/model_{}_{}.pkl'.format(str(correct), str(test_loss)))
+                model, 'fly_bitch/model/model_{}_{}_{}.pkl'.format(str(auc), str(f1_macro), str(f1_micro)))
 
     logger.info("Done!")
