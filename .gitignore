@@ -142,3 +142,7 @@ cython_debug/
 data/
 
 test.ipynb
+
+fly_bitch/runs/
+
+fly_bitch/model/
