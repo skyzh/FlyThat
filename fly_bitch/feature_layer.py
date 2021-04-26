@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
-
+import torch.autograd.profiler as profiler
 
 class FeatureExtractionLayer(nn.Module):
     def __init__(self):
@@ -13,4 +13,5 @@ class FeatureExtractionLayer(nn.Module):
         )
 
     def forward(self, x):
-        return self.features(x)
+        result = self.features(x)
+        return result
