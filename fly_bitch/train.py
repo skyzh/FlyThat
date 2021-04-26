@@ -15,16 +15,20 @@ from tensorboardX import SummaryWriter
 import numpy as np
 from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score
 from .dataset import MAX_LABELS
+import torch.autograd.profiler as profiler
 
 
 def train(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
     model.train()
+    model.to(device)
+
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
 
         # Compute prediction error
         pred = model(X)
+
         loss = loss_fn(pred, y)
 
         # Backpropagation
@@ -32,9 +36,8 @@ def train(dataloader, model, loss_fn, optimizer, device):
         loss.backward()
         optimizer.step()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        loss, current = loss.item(), batch * len(X)
+        print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
 def test(dataloader, model, loss_fn, device):
@@ -93,7 +96,7 @@ def test(dataloader, model, loss_fn, device):
     return auc, f1_macro, f1_micro
 
 
-def main(args):
+def main(argv):
     parser = argparse.ArgumentParser(description='Generate PyTorch Dataset')
     parser.add_argument('tensorboard_logs_path', type=str, nargs='?', help='Path of tensorboard logs',
                         default=str(Path() / 'fly_bitch/runs/logs'))
@@ -101,53 +104,57 @@ def main(args):
                         default=str(Path() / 'fly_bitch/model/model.pkl'))
     parser.add_argument('data_path', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
-    args = parser.parse_args(args)
-    tensorboard_logs_path = args.tensorboard_logs_path
+    parser.add_argument('batch_size', type=int, nargs='?', help='Batch size',
+                        default=8)
+    args=parser.parse_args(argv)
+    tensorboard_logs_path=args.tensorboard_logs_path
     # '' 经过Path会被解析成 './', exists就会判定True
-    model_path = args.model_path
-    data_path = Path(args.data_path)
+    model_path=args.model_path
+    data_path=Path(args.data_path)
     logger.info(f"using tensorboard logs path '{tensorboard_logs_path}'")
     logger.info(f"using model path '{model_path}'")
     logger.info(f"using data path '{data_path}'")
 
-    device = utils.get_device()
+    device=utils.get_device()
     logger.info(f'Using {device} device')
     # 这里就限制GPU保存，GPU上加载
-    model = NeuralNetwork()
+    model=NeuralNetwork()
     if os.path.exists(model_path):
-        model = torch.load(model_path)
+        model=torch.load(model_path)
         model.to(device)
     # Enable logging if you want to view internals of model shape
     # model = NeuralNetwork(logging=True)
-    loss_fn = nn.BCELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
-    epochs = 5
+    loss_fn=nn.BCELoss()
+    optimizer=torch.optim.SGD(model.parameters(), lr=1e-3)
+    epochs=5
 
-    dataset = DrosophilaTrainImageDataset(
+    dataset=DrosophilaTrainImageDataset(
         Path(data_path), feature_transformer())
-    dataset_length = len(dataset)
-    train_length = int(dataset_length * 0.8)
-    test_length = dataset_length - train_length
-    train_dataset, test_dataset = torch.utils.data.random_split(
+    dataset_length=len(dataset)
+    train_length=int(dataset_length * 0.8)
+    test_length=dataset_length - train_length
+    train_dataset, test_dataset=torch.utils.data.random_split(
         dataset, (train_length, test_length))
-    train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
+    train_dataloader=DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=True)
+    test_dataloader=DataLoader(
+        test_dataset, batch_size=args.batch_size, shuffle=True)
 
-    writer = SummaryWriter(tensorboard_logs_path)
+    writer=SummaryWriter(tensorboard_logs_path)
 
     # seconds.xxxxx
-    last_time = time.time()
+    last_time=time.time()
     for t in range(epochs):
         logger.info(f"Epoch {t+1}\n-------------------------------")
         train(train_dataloader, model, loss_fn, optimizer, device)
-        auc, f1_macro, f1_micro = test(test_dataloader, model, loss_fn, device)
+        auc, f1_macro, f1_micro=test(test_dataloader, model, loss_fn, device)
         writer.add_scalar('auc', auc, global_step=t)
         writer.add_scalar('f1_macro', f1_macro, global_step=t)
         writer.add_scalar('f1_micro', f1_micro, global_step=t)
 
-        now_time = time.time()
+        now_time=time.time()
         if now_time - last_time >= 1800.0:
-            last_time = now_time
+            last_time=now_time
             torch.save(
                 model, 'fly_bitch/model/model_{}_{}_{}.pkl'.format(str(auc), str(f1_macro), str(f1_micro)))
 
