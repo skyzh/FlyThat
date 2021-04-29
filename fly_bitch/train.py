@@ -21,7 +21,6 @@ import torch.autograd.profiler as profiler
 def train(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
     model.train()
-    # model.to(device)
 
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
@@ -39,11 +38,6 @@ def train(dataloader, model, loss_fn, optimizer, device):
             
         loss, current = loss.item(), batch * len(X)
         print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-        if batch % 10 == 0:
-            print(pred)
-            print(y)
-        if batch == 40:
-            break
         
 
 
@@ -55,7 +49,6 @@ def test(dataloader, model, loss_fn, device):
     score_list = []
     label_list = []
     test_loss, correct = 0, 0
-    cnt = 0
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
@@ -66,9 +59,6 @@ def test(dataloader, model, loss_fn, device):
             score_list.extend(outputs.detach().cpu().numpy())
             label_list.extend(y.cpu().numpy())
             
-            cnt = cnt + 1
-            if cnt == 10:
-                break
 
     # [batch * 30]
     score_array = np.concatenate(score_list)
