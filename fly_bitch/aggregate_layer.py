@@ -6,6 +6,7 @@ from torchvision import transforms
 from loguru import logger
 import torch.autograd.profiler as profiler
 
+
 class L1Agg(nn.Module):
     '''
     input x: m*C*H*W
