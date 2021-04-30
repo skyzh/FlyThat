@@ -21,18 +21,18 @@ import torch.autograd.profiler as profiler
 def train(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
     model.train()
-    model.to(device)
 
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
 
+        optimizer.zero_grad()
+
         # Compute prediction error
         pred = model(X)
-
         loss = loss_fn(pred, y)
 
         # Backpropagation
-        optimizer.zero_grad()
+
         loss.backward()
         optimizer.step()
 
@@ -57,43 +57,31 @@ def test(dataloader, model, loss_fn, device):
             score_list.extend(outputs.detach().cpu().numpy())
             label_list.extend(y.cpu().numpy())
 
-    score_array = np.array(score_list)
-    label_onehot = np.array(label_onehot)
+    # [batch * 30]
+    score_array = np.concatenate(score_list)
+    score_array_ = np.where(score_array > 0.5, 1, 0)
+    label_onehot = np.concatenate(label_list)
 
-    # auc_micro
-    fpr_micro, tpr_micro, _ = roc_curve(
-        label_onehot.ravel(), score_array.ravel())
-    auc_micro = auc(fpr_micro, tpr_micro)
-
-    # auc_macro
-    fpr_dict = dict()
-    tpr_dict = dict()
-    for i in range(num_class):
-        fpr_dict[i], tpr_dict[i], _ = roc_curve(
-            label_onehot[:, i], score_array[:, i])
-        roc_auc_dict[i] = auc(fpr_dict[i], tpr_dict[i])
-
-    all_fpr = np.unique(np.concatenate(
-        [fpr_dict[i] for i in range(MAX_LABELS)]))
-    mean_tpr = np.zeros_like(all_fpr)
-    for i in range(MAX_LABELS):
-        mean_tpr += interp(all_fpr, fpr_dict[i], tpr_dict[i])
-
-    mean_tpr /= MAX_LABELS
-    auc_macro = auc(all_fpr, mean_tpr)
+    print(score_array)
+    print(label_onehot)
 
     # auc average=macro
-    auc = roc_auc_score(label_onehot, score_array, multi_class='ovo')
+    auc_ = -1.0
+    try:
+        auc_ = roc_auc_score(label_onehot, score_array)
+    except ValueError:
+        # 出现label_onehot全是0的情况
+        pass
 
     # f1
-    f1_macro = f1_score(label_onehot, score_array, average='macro')
-    f1_micro = f1_score(label_onehot, score_array, average='micro')
+    f1_macro = f1_score(label_onehot, score_array_, average='macro')
+    f1_micro = f1_score(label_onehot, score_array_, average='micro')
 
     logger.info(
-        f"Test Error: \n AUC {auc}, auc_macro {auc_macro}, auc_micro {auc_micro} \n f1_macro {f1_macro}, f1_micro {f1_micro} \n"
+        f"Test Error: \n AUC {auc_}, f1_macro {f1_macro}, f1_micro {f1_micro} \n"
     )
 
-    return auc, f1_macro, f1_micro
+    return auc_, f1_macro, f1_micro
 
 
 def main(argv):
@@ -106,56 +94,61 @@ def main(argv):
                         default=str(Path() / 'data'))
     parser.add_argument('batch_size', type=int, nargs='?', help='Batch size',
                         default=8)
-    args=parser.parse_args(argv)
-    tensorboard_logs_path=args.tensorboard_logs_path
+    args = parser.parse_args(argv)
+    tensorboard_logs_path = args.tensorboard_logs_path
     # '' 经过Path会被解析成 './', exists就会判定True
-    model_path=args.model_path
-    data_path=Path(args.data_path)
+    model_path = args.model_path
+    data_path = Path(args.data_path)
     logger.info(f"using tensorboard logs path '{tensorboard_logs_path}'")
     logger.info(f"using model path '{model_path}'")
     logger.info(f"using data path '{data_path}'")
 
-    device=utils.get_device()
+    device = utils.get_device()
     logger.info(f'Using {device} device')
     # 这里就限制GPU保存，GPU上加载
-    model=NeuralNetwork()
+    model = NeuralNetwork()
     if os.path.exists(model_path):
-        model=torch.load(model_path)
-        model.to(device)
+        logger.info(f"loading model from '{model_path}'")
+        model = torch.load(model_path)
+
+    model.to(device)
     # Enable logging if you want to view internals of model shape
     # model = NeuralNetwork(logging=True)
-    loss_fn=nn.BCELoss()
-    optimizer=torch.optim.SGD(model.parameters(), lr=1e-3)
-    epochs=5
+    loss_fn = nn.BCELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    epochs = 20
 
-    dataset=DrosophilaTrainImageDataset(
+    dataset = DrosophilaTrainImageDataset(
         Path(data_path), feature_transformer())
-    dataset_length=len(dataset)
-    train_length=int(dataset_length * 0.8)
-    test_length=dataset_length - train_length
-    train_dataset, test_dataset=torch.utils.data.random_split(
+    dataset_length = len(dataset)
+    train_length = int(dataset_length * 0.8)
+    test_length = dataset_length - train_length
+    train_dataset, test_dataset = torch.utils.data.random_split(
         dataset, (train_length, test_length))
-    train_dataloader=DataLoader(
+    train_dataloader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True)
-    test_dataloader=DataLoader(
+    test_dataloader = DataLoader(
         test_dataset, batch_size=args.batch_size, shuffle=True)
 
-    writer=SummaryWriter(tensorboard_logs_path)
+    writer = SummaryWriter(tensorboard_logs_path)
 
     # seconds.xxxxx
-    last_time=time.time()
+    last_time = time.time()
     for t in range(epochs):
-        logger.info(f"Epoch {t+1}\n-------------------------------")
+        logger.info(
+            f"Epoch {t+1}, time {last_time} s\n-------------------------------")
         train(train_dataloader, model, loss_fn, optimizer, device)
-        auc, f1_macro, f1_micro=test(test_dataloader, model, loss_fn, device)
-        writer.add_scalar('auc', auc, global_step=t)
+        auc_, f1_macro, f1_micro = test(
+            test_dataloader, model, loss_fn, device)
+        writer.add_scalar('auc', auc_, global_step=t)
         writer.add_scalar('f1_macro', f1_macro, global_step=t)
         writer.add_scalar('f1_micro', f1_micro, global_step=t)
 
-        now_time=time.time()
+        now_time = time.time()
         if now_time - last_time >= 1800.0:
-            last_time=now_time
+            last_time = now_time
+            # 很离谱的是加了文件夹就会提示找不到路径
             torch.save(
-                model, 'fly_bitch/model/model_{}_{}_{}.pkl'.format(str(auc), str(f1_macro), str(f1_micro)))
+                model, 'model_{}_{}_{}.pkl'.format(str(auc_), str(f1_macro), str(f1_micro)))
 
     logger.info("Done!")
