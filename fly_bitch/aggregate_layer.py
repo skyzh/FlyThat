@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torchvision import transforms
 from loguru import logger
+import torch.autograd.profiler as profiler
 
 import numpy as np
 
