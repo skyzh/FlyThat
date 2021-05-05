@@ -135,7 +135,6 @@ tensorboardx=2.2=pyhd8ed1ab_0
 threadpoolctl=2.1.0=pyh5ca1d4c_0
 tk=8.6.10=hbc83047_0
 toml=0.10.2=pyhd3eb1b0_0
-torch-tb-profiler=0.1.0=pypi_0
 torchvision=0.9.1=py38_cu102
 tornado=6.1=py38h27cfd23_0
 traitlets=5.0.5=pyhd3eb1b0_0
