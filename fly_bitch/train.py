@@ -17,12 +17,17 @@ from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score
 from .dataset import MAX_LABELS
 import torch.autograd.profiler as profiler
 
+def result_threshold(score_array):
+    return np.where(score_array > 0.5, 1, 0)
 
-def train(dataloader, model, loss_fn, optimizer, device):
+def train(dataloader, model, loss_fn, optimizer, device, partial=False):
     size = len(dataloader.dataset)
     model.train()
 
     for batch, (X, y) in enumerate(dataloader):
+        if partial and batch > 4:
+            break
+
         X, y = X.to(device), y.to(device)
 
         optimizer.zero_grad()
@@ -37,7 +42,21 @@ def train(dataloader, model, loss_fn, optimizer, device):
         optimizer.step()
 
         loss, current = loss.item(), batch * len(X)
-        print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+        y = y.detach().cpu().numpy()
+        pred = result_threshold(pred.detach().cpu().numpy())
+
+        auc = -1
+        try:
+            auc = roc_auc_score(y, pred)
+        except ValueError as e:
+            logger.warning(e)
+
+        f1_macro = f1_score(y, pred, average='macro')
+        f1_micro = f1_score(y, pred, average='micro')
+        
+        print(f"Train Loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        print(f"Train AUC: {auc:>7f}, F1 Macro: {f1_macro:>7f}, F1 Micro: {f1_micro:>7f}")
 
 
 def test(dataloader, model, loss_fn, device):
@@ -59,7 +78,7 @@ def test(dataloader, model, loss_fn, device):
 
     # [batch * 30]
     score_array = np.concatenate(score_list)
-    score_array_ = np.where(score_array > 0.5, 1, 0)
+    score_array_ = result_threshold(score_array)
     label_onehot = np.concatenate(label_list)
 
     print(score_array)
@@ -78,7 +97,7 @@ def test(dataloader, model, loss_fn, device):
     f1_micro = f1_score(label_onehot, score_array_, average='micro')
 
     logger.info(
-        f"Test Error: \n AUC {auc_}, f1_macro {f1_macro}, f1_micro {f1_micro} \n"
+        f"Test AUC {auc_}, F1 Macro {f1_macro}, F1 Micro {f1_micro} \n"
     )
 
     return auc_, f1_macro, f1_micro
@@ -106,14 +125,13 @@ def main(argv):
     device = utils.get_device()
     logger.info(f'Using {device} device')
     # 这里就限制GPU保存，GPU上加载
+    # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
     if os.path.exists(model_path):
         logger.info(f"loading model from '{model_path}'")
         model = torch.load(model_path)
 
     model.to(device)
-    # Enable logging if you want to view internals of model shape
-    # model = NeuralNetwork(logging=True)
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
     epochs = 20
@@ -123,6 +141,8 @@ def main(argv):
     dataset_length = len(dataset)
     train_length = int(dataset_length * 0.8)
     test_length = dataset_length - train_length
+    # TODO: use a flag to control whether to use partial data
+    partial = True
     train_dataset, test_dataset = torch.utils.data.random_split(
         dataset, (train_length, test_length))
     train_dataloader = DataLoader(
@@ -137,7 +157,7 @@ def main(argv):
     for t in range(epochs):
         logger.info(
             f"Epoch {t+1}, time {last_time} s\n-------------------------------")
-        train(train_dataloader, model, loss_fn, optimizer, device)
+        train(train_dataloader, model, loss_fn, optimizer, device, partial=partial)
         auc_, f1_macro, f1_micro = test(
             test_dataloader, model, loss_fn, device)
         writer.add_scalar('auc', auc_, global_step=t)

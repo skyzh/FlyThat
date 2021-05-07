@@ -10,7 +10,7 @@ class FeatureExtractionLayer(nn.Module):
         origin = torchvision.models.resnet18(pretrained=True)
 
         self.features = nn.Sequential(
-            *list(origin.children())[:-2]
+            *list(origin.children())[:-1]
         )
 
     def forward(self, x):
