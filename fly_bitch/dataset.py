@@ -11,7 +11,7 @@ from torch import nn
 import torch
 from PIL import Image
 
-MAX_IMAGE_TENSOR = 20
+MAX_IMAGE_TENSOR = 8
 IMG_WIDTH = 320
 IMG_HEIGHT = 128
 IMG_CHANNEL = 3
@@ -26,7 +26,7 @@ def gen_onehot(labels, num_classes):
 
 
 class DrosophilaTrainImageDataset(Dataset):
-    def __init__(self, data_path, image_transform):
+    def __init__(self, data_path, image_transform, partial):
         """Load dataset
 
         Args:
@@ -36,9 +36,10 @@ class DrosophilaTrainImageDataset(Dataset):
         self.data_csv = get_train_data(data_path / 'train.csv')
         self.data_path = data_path
         self.image_transform = image_transform
+        self.partial = partial
 
     def __len__(self):
-        return len(self.data_csv)
+        return 20 if self.partial else len(self.data_csv)
 
     def __getitem__(self, idx):
         """Get an item from dataset
@@ -48,9 +49,9 @@ class DrosophilaTrainImageDataset(Dataset):
         """
         labels = self.data_csv.iloc[idx, 1]
         imgs = self.data_csv.iloc[idx, 2]
-        if len(imgs) > MAX_IMAGE_TENSOR:
-            logger.warning(
-                f'ignore some of the images of {idx}: {len(imgs)} > {MAX_IMAGE_TENSOR}')
+        # if len(imgs) > MAX_IMAGE_TENSOR:
+        #     logger.warning(
+        #         f'ignore some of the images of {idx}: {len(imgs)} > {MAX_IMAGE_TENSOR}')
         tensors = []
         for i in range(MAX_IMAGE_TENSOR):
             if i < len(imgs):

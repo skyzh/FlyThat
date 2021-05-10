@@ -12,6 +12,7 @@ class FeatureExtractionLayer(nn.Module):
         self.features = nn.Sequential(
             *list(origin.children())[:-1]
         )
+        self.features = nn.DataParallel(self.features)
 
     def forward(self, x):
         result = self.features(x)

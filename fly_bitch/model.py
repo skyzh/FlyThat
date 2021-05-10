@@ -14,7 +14,7 @@ class NeuralNetwork(nn.Module):
         self.aggregate = aggregate_layer.Agg("L1", logging=logging)
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(10240, MAX_LABELS),
+            nn.Linear(4096, MAX_LABELS),
             nn.Sigmoid()
         )
         self.logging = logging

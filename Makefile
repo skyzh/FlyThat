@@ -1,5 +1,5 @@
-MODEL_PATH = "fly_bitch/model/model.pkl"
-TENSORBOARD_LOGS_PATH = "fly_bitch/runs/logs"
+MODEL_PATH = "runs/model"
+TENSORBOARD_LOGS_PATH = "runs/logs"
 
 test:
 	pytest fly_bitch
@@ -18,7 +18,4 @@ run_dataset:
 
 run_model:
 	python -m fly_bitch model
-
-run_train:
-	python -m fly_bitch train $(TENSORBOARD_LOGS_PATH) $(MODEL_PATH)
 
