@@ -18,11 +18,16 @@ from .dataset import MAX_LABELS
 import torch.autograd.profiler as profiler
 
 
+def result_threshold(score_array):
+    return np.where(score_array > 0.5, 1, 0)
+
+
 def train(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
     model.train()
 
     for batch, (X, y) in enumerate(dataloader):
+
         X, y = X.to(device), y.to(device)
 
         optimizer.zero_grad()
@@ -37,33 +42,29 @@ def train(dataloader, model, loss_fn, optimizer, device):
         optimizer.step()
 
         loss, current = loss.item(), batch * len(X)
-        print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        print(f"Train Loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
-def test(dataloader, model, loss_fn, device):
-    size = len(dataloader.dataset)
+def test(dataloader, model, loss_fn, device, identifier):
     model.eval()
 
     score_list = []
     label_list = []
-    test_loss, correct = 0, 0
+    loss = 0
+
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
             # TODO: implement this
             # [batch, 30]
             outputs = model(X)
+            loss += loss_fn(outputs, y)
+            score_list.append(outputs.detach().cpu().numpy())
+            label_list.append(y.cpu().numpy())
 
-            score_list.extend(outputs.detach().cpu().numpy())
-            label_list.extend(y.cpu().numpy())
-
-    # [batch * 30]
     score_array = np.concatenate(score_list)
-    score_array_ = np.where(score_array > 0.5, 1, 0)
     label_onehot = np.concatenate(label_list)
-
-    print(score_array)
-    print(label_onehot)
+    score_array = result_threshold(score_array)
 
     # auc average=macro
     auc_ = -1.0
@@ -74,81 +75,98 @@ def test(dataloader, model, loss_fn, device):
         pass
 
     # f1
-    f1_macro = f1_score(label_onehot, score_array_, average='macro')
-    f1_micro = f1_score(label_onehot, score_array_, average='micro')
+    f1_macro = f1_score(label_onehot, score_array, average='macro')
+    f1_micro = f1_score(label_onehot, score_array, average='micro')
 
-    logger.info(
-        f"Test Error: \n AUC {auc_}, f1_macro {f1_macro}, f1_micro {f1_micro} \n"
+    print(
+        f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Micro {f1_micro}"
     )
 
-    return auc_, f1_macro, f1_micro
+    return auc_, f1_macro, f1_micro, loss
 
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Generate PyTorch Dataset')
-    parser.add_argument('tensorboard_logs_path', type=str, nargs='?', help='Path of tensorboard logs',
-                        default=str(Path() / 'fly_bitch/runs/logs'))
-    parser.add_argument('model_path', type=str, nargs='?', help='Path of model',
-                        default=str(Path() / 'fly_bitch/model/model.pkl'))
-    parser.add_argument('data_path', type=str, nargs='?', help='Path of unzip data',
+    parser.add_argument('--log', type=str, nargs='?', help='Path of tensorboard logs',
+                        default=str(Path() / 'runs/logs'))
+    parser.add_argument('--model', type=str, nargs='?', help='Model checkpoint path',
+                        default=str(Path() / 'runs/model'))
+    parser.add_argument('--data', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
-    parser.add_argument('batch_size', type=int, nargs='?', help='Batch size',
-                        default=8)
+    parser.add_argument('--batch', type=int, nargs='?', help='Batch size',
+                        default=64)
+    parser.add_argument('--epoch', type=int, nargs='?', help='Epoch',
+                        default=50)
+    parser.add_argument('--partial', action='store_true',
+                        help='Only use part of the data', default=False)
     args = parser.parse_args(argv)
-    tensorboard_logs_path = args.tensorboard_logs_path
-    # '' 经过Path会被解析成 './', exists就会判定True
-    model_path = args.model_path
-    data_path = Path(args.data_path)
-    logger.info(f"using tensorboard logs path '{tensorboard_logs_path}'")
-    logger.info(f"using model path '{model_path}'")
-    logger.info(f"using data path '{data_path}'")
+    tensorboard_logs_path = Path(args.log)
+    model_path = Path(args.model)
+    data_path = Path(args.data)
+    logger.info(
+        f"Tensorboard logs will be saved to: '{tensorboard_logs_path}'")
+    logger.info(f"Model will be saved to: '{model_path}'")
+    logger.info(f"Data will be loaded from: '{data_path}'")
+
+    if model_path.exists():
+        logger.warning(
+            "There are models inside model path, it's better to remove the directory before training")
+
+    if tensorboard_logs_path.exists():
+        logger.warning(
+            "There are logs inside log path, it's better to remove the directory before training")
+
+    model_path.mkdir(parents=True, exist_ok=True)
+    tensorboard_logs_path.mkdir(parents=True, exist_ok=True)
+
+    if args.partial:
+        logger.warning(f"Partial mode enabled, only use first 10 bags")
 
     device = utils.get_device()
     logger.info(f'Using {device} device')
     # 这里就限制GPU保存，GPU上加载
+    # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
-    if os.path.exists(model_path):
-        logger.info(f"loading model from '{model_path}'")
-        model = torch.load(model_path)
 
     model.to(device)
-    # Enable logging if you want to view internals of model shape
-    # model = NeuralNetwork(logging=True)
     loss_fn = nn.BCELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
-    epochs = 20
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    epochs = args.epoch
 
     dataset = DrosophilaTrainImageDataset(
-        Path(data_path), feature_transformer())
+        Path(data_path), feature_transformer(), args.partial)
     dataset_length = len(dataset)
     train_length = int(dataset_length * 0.8)
     test_length = dataset_length - train_length
     train_dataset, test_dataset = torch.utils.data.random_split(
         dataset, (train_length, test_length))
     train_dataloader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True)
+        train_dataset, batch_size=args.batch, shuffle=True)
     test_dataloader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=True)
+        test_dataset, batch_size=args.batch, shuffle=True)
 
     writer = SummaryWriter(tensorboard_logs_path)
 
-    # seconds.xxxxx
-    last_time = time.time()
     for t in range(epochs):
-        logger.info(
-            f"Epoch {t+1}, time {last_time} s\n-------------------------------")
-        train(train_dataloader, model, loss_fn, optimizer, device)
-        auc_, f1_macro, f1_micro = test(
-            test_dataloader, model, loss_fn, device)
-        writer.add_scalar('auc', auc_, global_step=t)
-        writer.add_scalar('f1_macro', f1_macro, global_step=t)
-        writer.add_scalar('f1_micro', f1_micro, global_step=t)
+        print(f"Epoch {t+1}")
+        train(train_dataloader, model, loss_fn,
+              optimizer, device)
 
-        now_time = time.time()
-        if now_time - last_time >= 1800.0:
-            last_time = now_time
-            # 很离谱的是加了文件夹就会提示找不到路径
-            torch.save(
-                model, 'model_{}_{}_{}.pkl'.format(str(auc_), str(f1_macro), str(f1_micro)))
+        auc_, f1_macro, f1_micro, loss = test(
+            train_dataloader, model, loss_fn, device, 'Train')
+        writer.add_scalar('train_loss', loss, global_step=t)
+        writer.add_scalar('train_auc', auc_, global_step=t)
+        writer.add_scalar('train_f1_macro', f1_macro, global_step=t)
+        writer.add_scalar('train_f1_micro', f1_micro, global_step=t)
+
+        auc_, f1_macro, f1_micro, loss = test(
+            test_dataloader, model, loss_fn, device, 'Test')
+        writer.add_scalar('test_loss', loss, global_step=t)
+        writer.add_scalar('test_auc', auc_, global_step=t)
+        writer.add_scalar('test_f1_macro', f1_macro, global_step=t)
+        writer.add_scalar('test_f1_micro', f1_micro, global_step=t)
+
+        torch.save(
+            model, os.path.join(args.model, 'model_{}_{}_{}_{}.pkl'.format(str(t), str(auc_), str(f1_macro), str(f1_micro))))
 
     logger.info("Done!")

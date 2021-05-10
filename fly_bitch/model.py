@@ -14,8 +14,8 @@ class NeuralNetwork(nn.Module):
         self.aggregate = aggregate_layer.Agg("L1", logging=logging)
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(20480, MAX_LABELS),
-            nn.Softmax(dim=-1)
+            nn.Linear(4096, MAX_LABELS),
+            nn.Sigmoid()
         )
         self.logging = logging
 
@@ -30,10 +30,10 @@ class NeuralNetwork(nn.Module):
         if self.logging:
             logger.info(f'After feature extraction: {x.shape}')
 
-        # Aggregate on each batch
+        # # Aggregate on each batch
         _, c, h, w = x.shape
         x = x.reshape(batch_size, ninstance, c, h, w)
-        x = self.aggregate(x)
+        # x = self.aggregate(x)
         if self.logging:
             logger.info(f'After feature aggregate: {x.shape}')
 
