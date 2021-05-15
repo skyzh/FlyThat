@@ -2,6 +2,7 @@ from . import data_parser
 from . import dataset
 from . import model
 from . import train
+from . import sampler
 
 if __name__ == '__main__':
     import sys
@@ -13,3 +14,5 @@ if __name__ == '__main__':
         model.main(sys.argv[2:])
     if sys.argv[1] == 'train':
         train.main(sys.argv[2:])
+    if sys.argv[1] == 'sampler':
+        sampler.main(sys.argv[2:])
