@@ -133,7 +133,7 @@ def main(argv):
 
     model.to(device)
     loss_fn = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 
     dataset = DrosophilaTrainImageDataset(
