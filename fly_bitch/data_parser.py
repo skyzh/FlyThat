@@ -25,6 +25,21 @@ def get_train_data(csv_path):
     return df
 
 
+def get_test_data(csv_path):
+    """Generate train data in pandas Dataframe format
+
+    Args:
+        csv_path (pathlib.Path): Path of CSV file
+
+    Returns:
+        pandas.DataFrame: a dataframe
+    """
+
+    df = pd.read_csv(csv_path)
+    df['imgs'] = df['imgs'].apply(parse_tuple_like)
+    return df
+
+
 def main(args):
     parser = argparse.ArgumentParser(description='Parse Fly data')
     parser.add_argument('data_path', type=str, nargs='?', help='Path of unzip data',

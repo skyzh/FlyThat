@@ -8,7 +8,6 @@ import argparse
 from .feature_extractor import feature_transformer
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
-
 import os
 import time
 from tensorboardX import SummaryWriter
@@ -86,7 +85,7 @@ def test(dataloader, model, loss_fn, device, identifier):
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description='Generate PyTorch Dataset')
+    parser = argparse.ArgumentParser(description='Train Model')
     parser.add_argument('--log', type=str, nargs='?', help='Path of tensorboard logs',
                         default=str(Path() / 'runs/logs'))
     parser.add_argument('--model', type=str, nargs='?', help='Model checkpoint path',
@@ -131,7 +130,7 @@ def main(argv):
         logger.info("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
 
-    model.to(device)
+    model = model.to(device)
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
@@ -168,8 +167,7 @@ def main(argv):
         writer.add_scalar('AUC/test', auc_, global_step=t)
         writer.add_scalar('F1Macro/test', f1_macro, global_step=t)
         writer.add_scalar('F1Micro/test', f1_micro, global_step=t)
-
         torch.save(
-            model, os.path.join(args.model, 'model_{}_{}_{}_{}.pkl'.format(str(t), str(auc_), str(f1_macro), str(f1_micro))))
+            model.state_dict(), os.path.join(args.model, 'model_{}_{:.2f}_{:.2f}_{:.2f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
 
     logger.info("Done!")
