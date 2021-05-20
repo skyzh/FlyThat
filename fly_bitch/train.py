@@ -42,7 +42,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
         optimizer.step()
 
         loss, current = loss.item(), batch * len(X)
-        print(f"Train Loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        logger.info(f"Train Loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
 def test(dataloader, model, loss_fn, device, identifier):
@@ -78,7 +78,7 @@ def test(dataloader, model, loss_fn, device, identifier):
     f1_macro = f1_score(label_onehot, score_array, average='macro')
     f1_micro = f1_score(label_onehot, score_array, average='micro')
 
-    print(
+    logger.info(
         f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Micro {f1_micro}"
     )
 
@@ -128,7 +128,7 @@ def main(argv):
     # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
     if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        logger.info("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
 
     model.to(device)
@@ -151,7 +151,7 @@ def main(argv):
     writer = SummaryWriter(tensorboard_logs_path)
 
     for t in range(epochs):
-        print(f"Epoch {t+1}")
+        logger.info(f"Epoch {t+1}")
         train(train_dataloader, model, loss_fn,
               optimizer, device)
 
