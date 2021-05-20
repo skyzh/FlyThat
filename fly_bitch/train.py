@@ -157,17 +157,17 @@ def main(argv):
 
         auc_, f1_macro, f1_micro, loss = test(
             train_dataloader, model, loss_fn, device, 'Train')
-        writer.add_scalar('train_loss', loss, global_step=t)
-        writer.add_scalar('train_auc', auc_, global_step=t)
-        writer.add_scalar('train_f1_macro', f1_macro, global_step=t)
-        writer.add_scalar('train_f1_micro', f1_micro, global_step=t)
+        writer.add_scalar('Loss/train', loss, global_step=t)
+        writer.add_scalar('AUC/train', auc_, global_step=t)
+        writer.add_scalar('F1Macro/train', f1_macro, global_step=t)
+        writer.add_scalar('F1Micro/train', f1_micro, global_step=t)
 
         auc_, f1_macro, f1_micro, loss = test(
             test_dataloader, model, loss_fn, device, 'Test')
-        writer.add_scalar('test_loss', loss, global_step=t)
-        writer.add_scalar('test_auc', auc_, global_step=t)
-        writer.add_scalar('test_f1_macro', f1_macro, global_step=t)
-        writer.add_scalar('test_f1_micro', f1_micro, global_step=t)
+        writer.add_scalar('Loss/test', loss, global_step=t)
+        writer.add_scalar('AUC/test', auc_, global_step=t)
+        writer.add_scalar('F1Macro/test', f1_macro, global_step=t)
+        writer.add_scalar('F1Micro/test', f1_micro, global_step=t)
 
         torch.save(
             model, os.path.join(args.model, 'model_{}_{}_{}_{}.pkl'.format(str(t), str(auc_), str(f1_macro), str(f1_micro))))
