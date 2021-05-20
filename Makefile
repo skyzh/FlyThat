@@ -19,3 +19,5 @@ run_dataset:
 run_model:
 	python -m fly_bitch model
 
+clean:
+	rm -rf $(shell pwd)/runs

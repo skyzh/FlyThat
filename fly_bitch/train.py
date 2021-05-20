@@ -127,6 +127,9 @@ def main(argv):
     # 这里就限制GPU保存，GPU上加载
     # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(model)
 
     model.to(device)
     loss_fn = nn.BCELoss()
