@@ -26,6 +26,12 @@ def sort_by_auc(data):
     return auc
 
 
+def sort_by_f1(data):
+    val, _ = data
+    _, _, f1, _ = val
+    return f1
+
+
 def log_models(data):
     from prettytable import PrettyTable
     x = PrettyTable()
@@ -111,6 +117,6 @@ def main(argv):
             if entry.name.startswith('model'):
                 models.append((parse_file_name(entry.name), entry.path))
     logger.info(f"Found {len(models)} models")
-    models.sort(key=sort_by_auc, reverse=True)
+    models.sort(key=sort_by_f1, reverse=True)
     log_models(models)
     gen_data(args, models[0])
