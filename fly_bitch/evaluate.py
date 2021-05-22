@@ -46,9 +46,10 @@ def gen_data(args, model):
     dataset = DrosophilaTestImageDataset(
         Path(args.data), feature_transformer(), args.partial)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=False)
+
+    # AUC
+    all_data = []
     all_names = []
-    all_outputs = []
-    all_scores = []
 
     with torch.no_grad():
         size = len(dataloader.dataset)
@@ -60,13 +61,13 @@ def gen_data(args, model):
             outputs = model(data)
             outputs = outputs.cpu().numpy()
             all_names.extend(names)
-            for output in outputs:
-                all_scores.append(",".join(map(str, output)))
-            for output in result_threshold(outputs):
-                all_outputs.append(
-                    ",".join(map(str, np.where(output == 1)[0])))
-            df = pd.DataFrame(
-                {'gene_stage': all_names, 'predict': all_outputs, 'score': all_scores})
+            all_data.extend(outputs)
+
+        # Generate AUC file
+        df = pd.DataFrame(all_data, columns=[f"label{n}" for n in range(30)])
+        df['Id'] = all_names
+        df.to_csv(str(Path(path).parent.parent /
+                      'submit_auc.csv'), index=False)
 
 
 def main(argv):
