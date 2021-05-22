@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score
 from .dataset import MAX_LABELS
 import torch.autograd.profiler as profiler
+from .focal_loss import FocalLoss
 
 
 def result_threshold(score_array):
@@ -127,7 +128,7 @@ def main(argv):
     # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
     model = model.to(device)
-    loss_fn = nn.BCELoss()
+    loss_fn = FocalLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 

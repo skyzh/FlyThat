@@ -3,6 +3,7 @@ from . import dataset
 from . import model
 from . import train
 from . import evaluate
+from . import focal_loss
 
 if __name__ == '__main__':
     import sys
@@ -16,3 +17,5 @@ if __name__ == '__main__':
         train.main(sys.argv[2:])
     if sys.argv[1] == 'evaluate':
         evaluate.main(sys.argv[2:])
+    if sys.argv[1] == 'loss':
+        focal_loss.main(sys.argv[2:])
