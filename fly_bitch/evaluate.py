@@ -42,13 +42,19 @@ def gen_data(args, model):
     logger.info(f'Using {device} device')
     model = NeuralNetwork()
     model = model.to(device)
+
+    # This is currently a workaround for legacy models. For model trained
+    # starting with this commit, we don't need to call `state_dict`.
     model.load_state_dict(torch.load(path).state_dict())
+    # model.load_state_dict(torch.load(path))
+
     dataset = DrosophilaTestImageDataset(
         Path(args.data), feature_transformer(), args.partial)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=False)
 
     # AUC
     all_data = []
+    all_labels = []
     all_names = []
 
     with torch.no_grad():
@@ -63,11 +69,24 @@ def gen_data(args, model):
             all_names.extend(names)
             all_data.extend(outputs)
 
-        # Generate AUC file
+            for output in outputs:
+                output_string = " ".join(
+                    map(str, list(np.where(result_threshold(output) == 1)[0])))
+                if output_string == "":
+                    # If no category could be determined, use the one with maximum value
+                    output_string = str(np.argmax(output))
+                all_labels.append(output_string)
+
+        # Generate AUC submission file
         df = pd.DataFrame(all_data, columns=[f"label{n}" for n in range(30)])
         df['Id'] = all_names
         df.to_csv(str(Path(path).parent.parent /
                       'submit_auc.csv'), index=False)
+
+        # Generate F1 submission file
+        df = pd.DataFrame({"Id": all_names, "labels": all_labels})
+        df.to_csv(str(Path(path).parent.parent /
+                      'submit_f1.csv'), index=False)
 
 
 def main(argv):
