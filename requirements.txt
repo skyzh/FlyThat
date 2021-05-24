@@ -13,9 +13,9 @@ blinker=1.4=py38h06a4308_0
 brotlipy=0.7.0=py38h27cfd23_1003
 bzip2=1.0.8=h7b6447c_0
 c-ares=1.17.1=h27cfd23_0
-ca-certificates=2020.12.5=ha878542_0
+ca-certificates=2021.4.13=h06a4308_1
 cachetools=4.2.1=pyhd3eb1b0_0
-certifi=2020.12.5=py38h578d9bd_1
+certifi=2020.12.5=py38h06a4308_0
 cffi=1.14.5=py38h261ae71_0
 chardet=3.0.4=py38h06a4308_1003
 click=7.1.2=pyhd3eb1b0_0
@@ -137,6 +137,7 @@ tk=8.6.10=hbc83047_0
 toml=0.10.2=pyhd3eb1b0_0
 torchvision=0.9.1=py38_cu102
 tornado=6.1=py38h27cfd23_0
+tqdm=4.59.0=pyhd3eb1b0_1
 traitlets=5.0.5=pyhd3eb1b0_0
 typing_extensions=3.7.4.3=pyha847dfd_0
 urllib3=1.26.4=pyhd3eb1b0_0
