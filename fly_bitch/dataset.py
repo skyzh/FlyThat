@@ -25,11 +25,11 @@ def gen_onehot(labels, num_classes):
     return y_onehot
 
 
-def process_image_stack(image_path, imgs, image_transform):
+def process_image_stack(image_path, imgs, image_transform, padding=False):
     tensors = []
     for i in range(MAX_IMAGE_TENSOR):
-        if i < len(imgs):
-            img_path = image_path / imgs[i]
+        if i < len(imgs) or not padding:
+            img_path = image_path / imgs[i % len(imgs)]
             img_path = str(img_path)
             tensors.append(
                 image_transform(
