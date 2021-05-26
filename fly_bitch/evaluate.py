@@ -44,6 +44,12 @@ def log_models(data):
 def gen_data(args, model):
     (epoch, _, _, _), path = model
     logger.info(f"Using model from #{epoch}")
+
+    # Generate commit message
+    (Path(path).parent.parent / 'message.txt').write_text(
+        Path(path).parent.parent.name + ", #" + str(epoch)
+    )
+
     device = utils.get_device()
     logger.info(f'Using {device} device')
     model = NeuralNetwork()
@@ -100,6 +106,8 @@ def main(argv):
     parser = argparse.ArgumentParser(description='Evaluate Model')
     parser.add_argument('--model', type=str, nargs='?', help='Model checkpoint path',
                         default=DEFAULT_MODEL_PATH)
+    parser.add_argument('--epoch', type=int, nargs='?',
+                        help='Force use one model', default=None)
     parser.add_argument('--data', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
     parser.add_argument('--batch', type=int, nargs='?', help='Batch size',
@@ -115,6 +123,10 @@ def main(argv):
     for entry in os.scandir(model_folder):
         if entry.is_file():
             if entry.name.startswith('model'):
+                if args.epoch != None:
+                    epoch, _, _, _ = parse_file_name(entry.name)
+                    if epoch != args.epoch:
+                        continue
                 models.append((parse_file_name(entry.name), entry.path))
     logger.info(f"Found {len(models)} models")
     models.sort(key=sort_by_f1, reverse=True)
