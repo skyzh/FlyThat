@@ -160,6 +160,6 @@ def main(argv):
         writer.add_scalar('F1Macro/test', f1_macro, global_step=t)
         writer.add_scalar('F1Micro/test', f1_micro, global_step=t)
         torch.save(
-            model.state_dict(), os.path.join(args.model, 'model_{}_{:.2f}_{:.2f}_{:.2f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
+            model.state_dict(), os.path.join(args.model, 'model_{}_{:.4f}_{:.4f}_{:.4f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
 
     logger.info("Done!")
