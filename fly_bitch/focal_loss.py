@@ -12,12 +12,12 @@ class FocalLoss(nn.Module):
     def forward(self, inputs, targets):
         # Assert: The inputs have been applied on Sigmoid !!!
         # It is equivalent to nn.BCELoss
-        BCE_loss = F.binary_cross_entropy(inputs, targets, reduction='none')
+        bce_loss = F.binary_cross_entropy(inputs, targets, reduction='none')
         # pt = [Π(inputs[i]^targets[i]) * ((1-inputs[i])^(1-targets[i]))]^(1/n)
         # BCE_loss = -log(pt)
-        pt = torch.exp(-BCE_loss)
+        pt = torch.exp(-bce_loss)
         # F_loss = α * ((1-pt) ^ γ) * -log(pt)
-        F_loss = self.alpha * ((1-pt)**self.gamma) * BCE_loss
+        F_loss = self.alpha * ((1-pt)**self.gamma) * bce_loss
         return torch.mean(F_loss)
 
 
