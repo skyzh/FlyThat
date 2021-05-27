@@ -187,6 +187,7 @@ class NotSimpleAgg(nn.Module):
 
     def forward(self, x):
         # 把 `[batch, ninstance, c, 1, 1]` 降维，生成 `[batch, ninstance, c]`。
+        device = x.device
         x = x.squeeze()
         batch, ninstance, c = x.shape
         # 合并 `ninstance - 1` 次
@@ -197,7 +198,7 @@ class NotSimpleAgg(nn.Module):
             # 对角线上的元素为 0，把它们变成最大的元素，这样之后就不会被选中。
             tiles = torch.tile(
                 torch.eye(remaining_instance, dtype=torch.bool),
-                (batch, 1, 1)).to(x.device)
+                (batch, 1, 1)).to(device)
             all_dist[tiles] = torch.max(all_dist) + 1
             next_batch_data = []
             for batch_data, batch_dist in zip(x, all_dist):
@@ -215,7 +216,7 @@ class NotSimpleAgg(nn.Module):
                 all_rows[1] = b
                 next_batch = batch_data[all_rows, :]
                 next_batch_data.append(next_batch)
-            full_tensor = torch.stack(next_batch_data)
+            full_tensor = torch.stack(next_batch_data).to(device)
             to_merge = full_tensor[:, 0:2, :]
             remaining = full_tensor[:, 2:, :]
             # 合并每个 batch 的前两个特征
