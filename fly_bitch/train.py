@@ -16,6 +16,7 @@ from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score
 from .dataset import MAX_LABELS
 import torch.autograd.profiler as profiler
 from .focal_loss import FocalLoss
+from tqdm import tqdm
 
 
 def result_threshold(score_array, use_maximum_if_none=False, threshold=0.5):
@@ -30,12 +31,15 @@ def result_threshold(score_array, use_maximum_if_none=False, threshold=0.5):
     return np.where(score_array > threshold, 1, 0)
 
 
+TQDM_BAR_FORMAT = "{desc}:{percentage:3.0f}%|{bar:30}{r_bar}"
+
+
 def train(dataloader, model, loss_fn, optimizer, device):
-    size = len(dataloader.dataset)
     model.train()
+    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT,
+                    desc="Train", leave=False)
 
-    for batch, (X, y) in enumerate(dataloader):
-
+    for X, y in progress:
         X, y = X.to(device), y.to(device)
 
         optimizer.zero_grad()
@@ -49,19 +53,23 @@ def train(dataloader, model, loss_fn, optimizer, device):
         loss.backward()
         optimizer.step()
 
-        loss, current = loss.item(), batch * len(X)
-        logger.info(f"Train Loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        loss = loss.item()
+        progress.set_postfix({"loss": f"{loss:>7f}"})
+
+    progress.close()
 
 
 def test(dataloader, model, loss_fn, device, identifier):
     model.eval()
+    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT,
+                    desc=f"Test on {identifier}", leave=False)
 
     score_list = []
     label_list = []
     loss = 0
 
     with torch.no_grad():
-        for X, y in dataloader:
+        for X, y in progress:
             X, y = X.to(device), y.to(device)
             # TODO: implement this
             # [batch, 30]
@@ -73,7 +81,11 @@ def test(dataloader, model, loss_fn, device, identifier):
     score_array = np.concatenate(score_list)
     label_onehot = np.concatenate(label_list)
     # calculate AUC based on continuous value
-    auc_ = roc_auc_score(label_onehot, score_array)
+    auc_ = 0.0
+    try:
+        auc_ = roc_auc_score(label_onehot, score_array)
+    except ValueError:
+        pass
 
     # calculate f1 on discrete value
     score_array = result_threshold(score_array, True)
@@ -81,6 +93,8 @@ def test(dataloader, model, loss_fn, device, identifier):
     # f1
     f1_macro = f1_score(label_onehot, score_array, average='macro')
     f1_micro = f1_score(label_onehot, score_array, average='samples')
+
+    progress.close()
 
     logger.info(
         f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Samples {f1_micro}"
@@ -97,6 +111,8 @@ def main(argv):
                         default=str(Path() / 'runs/model'))
     parser.add_argument('--data', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
+    parser.add_argument('--loss', type=str, nargs='?', help='Loss function to be used',
+                        default="BCE")
     parser.add_argument('--batch', type=int, nargs='?', help='Batch size',
                         default=64)
     parser.add_argument('--epoch', type=int, nargs='?', help='Epoch',
@@ -132,7 +148,12 @@ def main(argv):
     # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
     model = model.to(device)
-    loss_fn = FocalLoss()
+    if args.loss == "BCE":
+        logger.info("Using BCE Loss")
+        loss_fn = nn.BCELoss()
+    if args.loss == "focal":
+        logger.info("Using Focal Loss")
+        loss_fn = FocalLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 
@@ -169,6 +190,6 @@ def main(argv):
         writer.add_scalar('F1Macro/test', f1_macro, global_step=t)
         writer.add_scalar('F1Micro/test', f1_micro, global_step=t)
         torch.save(
-            model.state_dict(), os.path.join(args.model, 'model_{}_{:.4f}_{:.4f}_{:.4f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
+            model.state_dict(), os.path.join(args.model, 'model_{:02d}_{:.4f}_{:.4f}_{:.4f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
 
     logger.info("Done!")
