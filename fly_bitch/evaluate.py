@@ -81,12 +81,16 @@ def gen_data(args, model):
             all_names.extend(names)
             all_data.extend(outputs)
 
-            for output in outputs:
+            for i, output in enumerate(outputs):
                 output_string = " ".join(
                     map(str, list(np.where(result_threshold(output) == 1)[0])))
                 if output_string == "":
                     # If no category could be determined, use the one with maximum value
+                    logger.warning(
+                        f"No category could be found for {names[i]}, maximum is {np.max(output)} at {np.argmax(output)}")
+                    # You can select using one category or using empty category by uncommenting the following line
                     output_string = str(np.argmax(output))
+                    # output_string = " ".join(map(str, range(30)))
                 all_labels.append(output_string)
 
         # Generate AUC submission file
