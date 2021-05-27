@@ -186,23 +186,26 @@ class NotSimpleAgg(nn.Module):
         self.logging = logging
 
     def forward(self, x):
-        # Transform [batch, ninstance, c, 1, 1] to [batch, ninstance, c]
+        # 把 `[batch, ninstance, c, 1, 1]` 降维，生成 `[batch, ninstance, c]`。
         x = x.squeeze()
         batch, ninstance, c = x.shape
+        # 合并 `ninstance - 1` 次
         for done in range(ninstance - 1):
             remaining_instance = ninstance - done
-            # p = 2 means Euclidean norm
+            # 对于每个 batch，计算 batch 内特征向量两两之间的欧氏距离。生成 [batch, N, N] 大小的矩阵。
             all_dist = torch.cdist(x, x, p=2)
             next_batch_data = []
             for batch_data, batch_dist in zip(x, all_dist):
+                # 对角线上的元素为 0，把它们变成最大的元素，这样之后就不会被选中。
                 batch_dist = torch.where(
                     torch.eye(remaining_instance, dtype=torch.uint8).to(x.device), torch.max(batch_dist) + 1, batch_dist)
+                # 找出最小元素所在的行列，也就是需要合并的两个特征。
                 a, b = np.unravel_index(
                     torch.argmin(batch_dist).cpu(), batch_dist.shape)
                 assert a != b
                 if a > b:
                     a, b, = b, a
-                # swap two instances to last two rows
+                # 把这两个特征换到所有特征的最前面。
                 all_rows = list(range(remaining_instance))
                 all_rows[a] = 0
                 all_rows[0] = a
@@ -213,6 +216,8 @@ class NotSimpleAgg(nn.Module):
             full_tensor = torch.stack(next_batch_data)
             to_merge = full_tensor[:, 0:2, :]
             remaining = full_tensor[:, 2:, :]
+            # 合并每个 batch 的前两个特征
             merged_tensor = self.func(self.conv(to_merge))
+            # 生成新的特征
             x = torch.cat((merged_tensor, remaining), dim=1)
         return x.squeeze()
