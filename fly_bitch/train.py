@@ -16,6 +16,7 @@ from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score
 from .dataset import MAX_LABELS
 import torch.autograd.profiler as profiler
 from .focal_loss import FocalLoss
+from tqdm import tqdm
 
 
 def result_threshold(score_array, use_maximum_if_none=False, threshold=0.5):
@@ -30,12 +31,14 @@ def result_threshold(score_array, use_maximum_if_none=False, threshold=0.5):
     return np.where(score_array > threshold, 1, 0)
 
 
+TQDM_BAR_FORMAT = "{desc}:{percentage:3.0f}%|{bar:30}{r_bar}"
+
+
 def train(dataloader, model, loss_fn, optimizer, device):
-    size = len(dataloader.dataset)
     model.train()
+    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT, desc="Train")
 
-    for batch, (X, y) in enumerate(dataloader):
-
+    for batch, (X, y) in enumerate(progress):
         X, y = X.to(device), y.to(device)
 
         optimizer.zero_grad()
@@ -49,19 +52,21 @@ def train(dataloader, model, loss_fn, optimizer, device):
         loss.backward()
         optimizer.step()
 
-        loss, current = loss.item(), batch * len(X)
-        logger.info(f"Train Loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        loss = loss.item()
+        progress.set_postfix({"loss": f"{loss:>7f}"})
 
 
 def test(dataloader, model, loss_fn, device, identifier):
     model.eval()
+    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT,
+                    desc=f"Test on {identifier}")
 
     score_list = []
     label_list = []
     loss = 0
 
     with torch.no_grad():
-        for X, y in dataloader:
+        for X, y in progress:
             X, y = X.to(device), y.to(device)
             # TODO: implement this
             # [batch, 30]
