@@ -196,9 +196,9 @@ class NotSimpleAgg(nn.Module):
             next_batch_data = []
             for batch_data, batch_dist in zip(x, all_dist):
                 batch_dist = torch.where(
-                    torch.eye(remaining_instance, dtype=torch.uint8), torch.max(batch_dist) + 1, batch_dist)
+                    torch.eye(remaining_instance, dtype=torch.uint8).to(x.device), torch.max(batch_dist) + 1, batch_dist)
                 a, b = np.unravel_index(
-                    torch.argmin(batch_dist), batch_dist.shape)
+                    torch.argmin(batch_dist).cpu(), batch_dist.shape)
                 assert a != b
                 if a > b:
                     a, b, = b, a
