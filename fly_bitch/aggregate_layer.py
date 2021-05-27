@@ -194,11 +194,13 @@ class NotSimpleAgg(nn.Module):
             remaining_instance = ninstance - done
             # 对于每个 batch，计算 batch 内特征向量两两之间的欧氏距离。生成 [batch, N, N] 大小的矩阵。
             all_dist = torch.cdist(x, x, p=2)
+            # 对角线上的元素为 0，把它们变成最大的元素，这样之后就不会被选中。
+            tiles = torch.tile(
+                torch.eye(remaining_instance, dtype=torch.bool),
+                (batch, 1, 1)).to(x.device)
+            all_dist[tiles] = torch.max(all_dist) + 1
             next_batch_data = []
             for batch_data, batch_dist in zip(x, all_dist):
-                # 对角线上的元素为 0，把它们变成最大的元素，这样之后就不会被选中。
-                batch_dist = torch.where(
-                    torch.eye(remaining_instance, dtype=torch.uint8).to(x.device), torch.max(batch_dist) + 1, batch_dist)
                 # 找出最小元素所在的行列，也就是需要合并的两个特征。
                 a, b = np.unravel_index(
                     torch.argmin(batch_dist).cpu(), batch_dist.shape)
