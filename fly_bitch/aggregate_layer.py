@@ -186,15 +186,17 @@ class NotSimpleAgg(nn.Module):
         self.logging = logging
 
     def forward(self, x):
-        # 把 `[batch, ninstance, c, 1, 1]` 降维，生成 `[batch, ninstance, c]`。
         device = x.device
         x = x.squeeze()
-        batch, ninstance, c = x.shape
+        batch, ninstance, c, w, h = x.shape
         # 合并 `ninstance - 1` 次
         for done in range(ninstance - 1):
             remaining_instance = ninstance - done
             # 对于每个 batch，计算 batch 内特征向量两两之间的欧氏距离。生成 [batch, N, N] 大小的矩阵。
+            x = x.flatten(start_dim=2)
             all_dist = torch.cdist(x, x, p=2)
+            if self.logging:
+                logger.info(f"Dist matrix: {all_dist.shape}")
             # 对角线上的元素为 0，把它们变成最大的元素，这样之后就不会被选中。
             tiles = torch.tile(
                 torch.eye(remaining_instance, dtype=torch.bool),

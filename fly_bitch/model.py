@@ -12,10 +12,10 @@ class NeuralNetwork(nn.Module):
         super(NeuralNetwork, self).__init__()
         self.feature = FeatureExtractionLayer()
         logger.info("Using SimpleAgg")
-        self.aggregate = aggregate_layer.SimpleAgg(logging=logging)
+        self.aggregate = aggregate_layer.NotSimpleAgg(logging=logging)
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(512 * 4 * 10, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(256, 64),
@@ -40,6 +40,10 @@ class NeuralNetwork(nn.Module):
         # # Aggregate on each batch
         _, c, h, w = x.shape
         x = x.reshape(batch_size, ninstance, c, h, w)
+
+        if self.logging:
+            logger.info(f'Before feature aggregate: {x.shape}')
+
         x = self.aggregate(x)
         if self.logging:
             logger.info(f'After feature aggregate: {x.shape}')

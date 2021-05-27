@@ -119,6 +119,8 @@ def main(argv):
                         default=50)
     parser.add_argument('--partial', action='store_true',
                         help='Only use part of the data', default=False)
+    parser.add_argument('--logging', action='store_true',
+                        help='Log model parameters during training', default=False)
     args = parser.parse_args(argv)
     tensorboard_logs_path = Path(args.log)
     model_path = Path(args.model)
@@ -145,8 +147,7 @@ def main(argv):
     device = utils.get_device()
     logger.info(f'Using {device} device')
     # 这里就限制GPU保存，GPU上加载
-    # model = NeuralNetwork(logging=True)
-    model = NeuralNetwork()
+    model = NeuralNetwork(logging=args.logging)
     model = model.to(device)
     if args.loss == "BCE":
         logger.info("Using BCE Loss")
