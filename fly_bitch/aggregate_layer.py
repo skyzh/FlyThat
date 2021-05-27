@@ -1,3 +1,4 @@
+from numpy.core.numeric import full
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -174,3 +175,44 @@ class SimpleAgg(nn.Module):
         # Transform [batch, ninstance, c, 1, 1] to [batch, ninstance, c]
         x = x.squeeze()
         return torch.mean(x, dim=1)
+
+
+class NotSimpleAgg(nn.Module):
+    def __init__(self, logging=False):
+        super(NotSimpleAgg, self).__init__()
+        self.func = nn.ReLU()
+        # conv merges 2 channels into 1
+        self.conv = nn.Conv1d(2, 1, kernel_size=3, stride=1, padding=1)
+        self.logging = logging
+
+    def forward(self, x):
+        # Transform [batch, ninstance, c, 1, 1] to [batch, ninstance, c]
+        x = x.squeeze()
+        batch, ninstance, c = x.shape
+        for done in range(ninstance - 1):
+            remaining_instance = ninstance - done
+            # p = 2 means Euclidean norm
+            all_dist = torch.cdist(x, x, p=2)
+            next_batch_data = []
+            for batch_data, batch_dist in zip(x, all_dist):
+                batch_dist = torch.where(
+                    torch.eye(remaining_instance, dtype=torch.uint8), torch.max(batch_dist) + 1, batch_dist)
+                a, b = np.unravel_index(
+                    torch.argmin(batch_dist), batch_dist.shape)
+                assert a != b
+                if a > b:
+                    a, b, = b, a
+                # swap two instances to last two rows
+                all_rows = list(range(remaining_instance))
+                all_rows[a] = 0
+                all_rows[0] = a
+                all_rows[b] = 1
+                all_rows[1] = b
+                next_batch = batch_data[all_rows, :]
+                next_batch_data.append(next_batch)
+            full_tensor = torch.stack(next_batch_data)
+            to_merge = full_tensor[:, 0:2, :]
+            remaining = full_tensor[:, 2:, :]
+            merged_tensor = self.func(self.conv(to_merge))
+            x = torch.cat((merged_tensor, remaining), dim=1)
+        return x.squeeze()
