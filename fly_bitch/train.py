@@ -36,7 +36,8 @@ TQDM_BAR_FORMAT = "{desc}:{percentage:3.0f}%|{bar:30}{r_bar}"
 
 def train(dataloader, model, loss_fn, optimizer, device):
     model.train()
-    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT, desc="Train")
+    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT,
+                    desc="Train", leave=False)
 
     for X, y in progress:
         X, y = X.to(device), y.to(device)
@@ -61,7 +62,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
 def test(dataloader, model, loss_fn, device, identifier):
     model.eval()
     progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT,
-                    desc=f"Test on {identifier}")
+                    desc=f"Test on {identifier}", leave=False)
 
     score_list = []
     label_list = []
