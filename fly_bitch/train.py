@@ -17,8 +17,16 @@ from .dataset import MAX_LABELS
 import torch.autograd.profiler as profiler
 
 
-def result_threshold(score_array):
-    return np.where(score_array > 0.5, 1, 0)
+def result_threshold(score_array, use_maximum_if_none=False, threshold=0.5):
+    if use_maximum_if_none:
+        data = []
+        for row in score_array:
+            if np.all(row <= threshold):
+                data.append(np.where(row >= np.max(row), 1, 0))
+            else:
+                data.append(row)
+        score_array = np.array(data)
+    return np.where(score_array > threshold, 1, 0)
 
 
 def train(dataloader, model, loss_fn, optimizer, device):
@@ -67,14 +75,14 @@ def test(dataloader, model, loss_fn, device, identifier):
     auc_ = roc_auc_score(label_onehot, score_array)
 
     # calculate f1 on discrete value
-    score_array = result_threshold(score_array)
+    score_array = result_threshold(score_array, True)
 
     # f1
     f1_macro = f1_score(label_onehot, score_array, average='macro')
-    f1_micro = f1_score(label_onehot, score_array, average='micro')
+    f1_micro = f1_score(label_onehot, score_array, average='samples')
 
     logger.info(
-        f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Micro {f1_micro}"
+        f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Samples {f1_micro}"
     )
 
     return auc_, f1_macro, f1_micro, loss

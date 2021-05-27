@@ -2,7 +2,7 @@ MODEL_PATH = "runs/model"
 TENSORBOARD_LOGS_PATH = "runs/logs"
 
 test:
-	pytest fly_bitch
+	pytest fly_bitch -vvv
 
 format:
 	autopep8 --in-place --recursive fly_bitch
