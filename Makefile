@@ -19,5 +19,8 @@ run_dataset:
 run_model:
 	python -m fly_bitch model
 
+run_loss:
+	python -m fly_bitch loss
+
 clean:
 	rm -rf $(shell pwd)/runs
