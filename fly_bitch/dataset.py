@@ -56,7 +56,7 @@ class DrosophilaTrainImageDataset(Dataset):
         self.partial = partial
 
     def __len__(self):
-        return 20 if self.partial else len(self.data_csv)
+        return 240 if self.partial else len(self.data_csv)
 
     def __getitem__(self, idx):
         """Get an item from dataset
@@ -88,7 +88,7 @@ class DrosophilaTestImageDataset(Dataset):
         self.partial = partial
 
     def __len__(self):
-        return 20 if self.partial else len(self.data_csv)
+        return 240 if self.partial else len(self.data_csv)
 
     def __getitem__(self, idx):
         """Get an item from dataset

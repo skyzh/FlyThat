@@ -142,7 +142,7 @@ def main(argv):
     tensorboard_logs_path.mkdir(parents=True, exist_ok=True)
 
     if args.partial:
-        logger.warning(f"Partial mode enabled, only use first 10 bags")
+        logger.warning(f"Partial mode enabled, only use first n bags")
 
     device = utils.get_device()
     logger.info(f'Using {device} device')

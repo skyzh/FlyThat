@@ -169,6 +169,7 @@ class Agg_666(nn.Module):
 class SimpleAgg(nn.Module):
     def __init__(self, logging=False):
         super(SimpleAgg, self).__init__()
+        logger.info("Using SimpleAgg")
         self.logging = logging
 
     def forward(self, x):
@@ -180,6 +181,7 @@ class SimpleAgg(nn.Module):
 class NotSimpleAgg(nn.Module):
     def __init__(self, logging=False):
         super(NotSimpleAgg, self).__init__()
+        logger.info("Using NotSimpleAgg")
         self.func = nn.ReLU()
         # conv merges 2 channels into 1
         self.conv = nn.Conv1d(2, 1, kernel_size=3, stride=1, padding=1)
