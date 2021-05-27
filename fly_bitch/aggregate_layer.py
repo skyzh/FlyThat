@@ -163,3 +163,14 @@ class Agg_666(nn.Module):
         # end aggregate
 
         return x[:, items-1]
+
+
+class SimpleAgg(nn.Module):
+    def __init__(self, logging=False):
+        super(SimpleAgg, self).__init__()
+        self.logging = logging
+
+    def forward(self, x):
+        # Transform [batch, ninstance, c, 1, 1] to [batch, ninstance, c]
+        x = x.squeeze()
+        return torch.mean(x, dim=1)

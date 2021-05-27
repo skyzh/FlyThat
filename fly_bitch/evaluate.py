@@ -26,6 +26,12 @@ def sort_by_auc(data):
     return auc
 
 
+def sort_by_f1(data):
+    val, _ = data
+    _, _, f1, _ = val
+    return f1
+
+
 def log_models(data):
     from prettytable import PrettyTable
     x = PrettyTable()
@@ -38,6 +44,12 @@ def log_models(data):
 def gen_data(args, model):
     (epoch, _, _, _), path = model
     logger.info(f"Using model from #{epoch}")
+
+    # Generate commit message
+    (Path(path).parent.parent / 'message.txt').write_text(
+        Path(path).parent.parent.name + ", #" + str(epoch)
+    )
+
     device = utils.get_device()
     logger.info(f'Using {device} device')
     model = NeuralNetwork()
@@ -69,12 +81,16 @@ def gen_data(args, model):
             all_names.extend(names)
             all_data.extend(outputs)
 
-            for output in outputs:
+            for i, output in enumerate(outputs):
                 output_string = " ".join(
                     map(str, list(np.where(result_threshold(output) == 1)[0])))
                 if output_string == "":
                     # If no category could be determined, use the one with maximum value
+                    logger.warning(
+                        f"No category could be found for {names[i]}, maximum is {np.max(output)} at {np.argmax(output)}")
+                    # You can select using one category or using empty category by uncommenting the following line
                     output_string = str(np.argmax(output))
+                    # output_string = " ".join(map(str, range(30)))
                 all_labels.append(output_string)
 
         # Generate AUC submission file
@@ -94,6 +110,8 @@ def main(argv):
     parser = argparse.ArgumentParser(description='Evaluate Model')
     parser.add_argument('--model', type=str, nargs='?', help='Model checkpoint path',
                         default=DEFAULT_MODEL_PATH)
+    parser.add_argument('--epoch', type=int, nargs='?',
+                        help='Force use one model', default=None)
     parser.add_argument('--data', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
     parser.add_argument('--batch', type=int, nargs='?', help='Batch size',
@@ -109,8 +127,12 @@ def main(argv):
     for entry in os.scandir(model_folder):
         if entry.is_file():
             if entry.name.startswith('model'):
+                if args.epoch != None:
+                    epoch, _, _, _ = parse_file_name(entry.name)
+                    if epoch != args.epoch:
+                        continue
                 models.append((parse_file_name(entry.name), entry.path))
     logger.info(f"Found {len(models)} models")
-    models.sort(key=sort_by_auc, reverse=True)
+    models.sort(key=sort_by_f1, reverse=True)
     log_models(models)
     gen_data(args, models[0])

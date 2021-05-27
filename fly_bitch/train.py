@@ -64,15 +64,11 @@ def test(dataloader, model, loss_fn, device, identifier):
 
     score_array = np.concatenate(score_list)
     label_onehot = np.concatenate(label_list)
-    score_array = result_threshold(score_array)
+    # calculate AUC based on continuous value
+    auc_ = roc_auc_score(label_onehot, score_array)
 
-    # auc average=macro
-    auc_ = -1.0
-    try:
-        auc_ = roc_auc_score(label_onehot, score_array)
-    except ValueError:
-        # 出现label_onehot全是0的情况
-        pass
+    # calculate f1 on discrete value
+    score_array = result_threshold(score_array)
 
     # f1
     f1_macro = f1_score(label_onehot, score_array, average='macro')
@@ -165,6 +161,6 @@ def main(argv):
         writer.add_scalar('F1Macro/test', f1_macro, global_step=t)
         writer.add_scalar('F1Micro/test', f1_micro, global_step=t)
         torch.save(
-            model.state_dict(), os.path.join(args.model, 'model_{}_{:.2f}_{:.2f}_{:.2f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
+            model.state_dict(), os.path.join(args.model, 'model_{}_{:.4f}_{:.4f}_{:.4f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
 
     logger.info("Done!")
