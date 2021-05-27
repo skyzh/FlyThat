@@ -136,7 +136,7 @@ def main(argv):
     # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
     model = model.to(device)
-    loss_fn = FocalLoss()
+    loss_fn = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 
