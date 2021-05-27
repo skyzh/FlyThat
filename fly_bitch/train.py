@@ -93,11 +93,11 @@ def test(dataloader, model, loss_fn, device, identifier):
     f1_macro = f1_score(label_onehot, score_array, average='macro')
     f1_micro = f1_score(label_onehot, score_array, average='samples')
 
+    progress.close()
+
     logger.info(
         f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Samples {f1_micro}"
     )
-
-    progress.close()
 
     return auc_, f1_macro, f1_micro, loss
 
