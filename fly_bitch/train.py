@@ -38,7 +38,7 @@ def train(dataloader, model, loss_fn, optimizer, device):
     model.train()
     progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT, desc="Train")
 
-    for batch, (X, y) in enumerate(progress):
+    for X, y in progress:
         X, y = X.to(device), y.to(device)
 
         optimizer.zero_grad()
@@ -54,6 +54,8 @@ def train(dataloader, model, loss_fn, optimizer, device):
 
         loss = loss.item()
         progress.set_postfix({"loss": f"{loss:>7f}"})
+
+    progress.close()
 
 
 def test(dataloader, model, loss_fn, device, identifier):
@@ -94,6 +96,8 @@ def test(dataloader, model, loss_fn, device, identifier):
     logger.info(
         f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Samples {f1_micro}"
     )
+
+    progress.close()
 
     return auc_, f1_macro, f1_micro, loss
 

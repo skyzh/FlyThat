@@ -137,7 +137,6 @@ tk=8.6.10=hbc83047_0
 toml=0.10.2=pyhd3eb1b0_0
 torchvision=0.9.1=py38_cu102
 tornado=6.1=py38h27cfd23_0
-tqdm=4.59.0=pyhd3eb1b0_1
 traitlets=5.0.5=pyhd3eb1b0_0
 typing_extensions=3.7.4.3=pyha847dfd_0
 urllib3=1.26.4=pyhd3eb1b0_0
