@@ -73,7 +73,11 @@ def test(dataloader, model, loss_fn, device, identifier):
     score_array = np.concatenate(score_list)
     label_onehot = np.concatenate(label_list)
     # calculate AUC based on continuous value
-    auc_ = roc_auc_score(label_onehot, score_array)
+    auc_ = 0.0
+    try:
+        auc_ = roc_auc_score(label_onehot, score_array)
+    except ValueError:
+        pass
 
     # calculate f1 on discrete value
     score_array = result_threshold(score_array, True)
@@ -169,6 +173,6 @@ def main(argv):
         writer.add_scalar('F1Macro/test', f1_macro, global_step=t)
         writer.add_scalar('F1Micro/test', f1_micro, global_step=t)
         torch.save(
-            model.state_dict(), os.path.join(args.model, 'model_{}_{:.4f}_{:.4f}_{:.4f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
+            model.state_dict(), os.path.join(args.model, 'model_{:02d}_{:.4f}_{:.4f}_{:.4f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
 
     logger.info("Done!")
