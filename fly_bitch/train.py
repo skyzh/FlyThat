@@ -101,6 +101,8 @@ def main(argv):
                         default=str(Path() / 'runs/model'))
     parser.add_argument('--data', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
+    parser.add_argument('--loss', type=str, nargs='?', help='Loss function to be used',
+                        default="BCE")
     parser.add_argument('--batch', type=int, nargs='?', help='Batch size',
                         default=64)
     parser.add_argument('--epoch', type=int, nargs='?', help='Epoch',
@@ -136,7 +138,12 @@ def main(argv):
     # model = NeuralNetwork(logging=True)
     model = NeuralNetwork()
     model = model.to(device)
-    loss_fn = nn.BCELoss()
+    if args.loss == "BCE":
+        logger.info("Using BCE Loss")
+        loss_fn = nn.BCELoss()
+    if args.loss == "focal":
+        logger.info("Using Focal Loss")
+        loss_fn = FocalLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 
