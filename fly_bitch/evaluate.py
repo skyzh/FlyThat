@@ -8,6 +8,7 @@ from . import utils
 import torch
 from .feature_extractor import feature_transformer
 from torch.utils.data import Dataset, DataLoader
+import torch.nn as nn
 from .model import NeuralNetwork
 from .train import result_threshold
 import numpy as np
@@ -52,13 +53,13 @@ def gen_data(args, model):
 
     device = utils.get_device()
     logger.info(f'Using {device} device')
-    model = NeuralNetwork()
+    model = nn.DataParallel(NeuralNetwork())
     model = model.to(device)
 
     # This is currently a workaround for legacy models. For model trained
     # starting with this commit, we don't need to call `state_dict`.
     # model.load_state_dict(torch.load(path).state_dict())
-    model.load_state_dict(torch.load(path))
+    model.load_state_dict(torch.load(path, map_location=device))
 
     dataset = DrosophilaTestImageDataset(
         Path(args.data), feature_transformer(), args.partial)
