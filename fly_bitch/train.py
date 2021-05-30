@@ -147,7 +147,7 @@ def main(argv):
     device = utils.get_device()
     logger.info(f'Using {device} device')
     # 这里就限制GPU保存，GPU上加载
-    model = NeuralNetwork(logging=args.logging)
+    model = nn.DataParallel(NeuralNetwork(logging=args.logging))
     model = model.to(device)
     if args.loss == "BCE":
         logger.info("Using BCE Loss")
