@@ -58,7 +58,7 @@ def gen_data(args, model):
     # This is currently a workaround for legacy models. For model trained
     # starting with this commit, we don't need to call `state_dict`.
     # model.load_state_dict(torch.load(path).state_dict())
-    model.load_state_dict(torch.load(path))
+    model.load_state_dict(torch.load(path, map_location=device))
 
     dataset = DrosophilaTestImageDataset(
         Path(args.data), feature_transformer(), args.partial)
