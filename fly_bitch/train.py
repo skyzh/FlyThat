@@ -154,9 +154,12 @@ def main(argv):
     if args.loss == "BCE":
         logger.info("Using BCE Loss")
         loss_fn = nn.BCELoss()
-    if args.loss == "focal":
+    elif args.loss == "focal":
         logger.info("Using Focal Loss")
         loss_fn = FocalLoss()
+    else:
+        logger.error(f"Unsupported loss function {args.loss}")
+        return
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 
