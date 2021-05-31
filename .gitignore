@@ -147,4 +147,5 @@ fly_bitch/runs/
 
 fly_bitch/model/
 
-runs/
+runs
+saved_runs

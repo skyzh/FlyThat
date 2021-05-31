@@ -1,3 +1,4 @@
+from numpy.core.numeric import full
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -163,3 +164,67 @@ class Agg_666(nn.Module):
         # end aggregate
 
         return x[:, items-1]
+
+
+class SimpleAgg(nn.Module):
+    def __init__(self, logging=False):
+        super(SimpleAgg, self).__init__()
+        logger.info("Using SimpleAgg")
+        self.logging = logging
+
+    def forward(self, x):
+        # Transform [batch, ninstance, c, 1, 1] to [batch, ninstance, c]
+        x = x.squeeze()
+        return torch.mean(x, dim=1)
+
+
+class NotSimpleAgg(nn.Module):
+    def __init__(self, logging=False):
+        super(NotSimpleAgg, self).__init__()
+        logger.info("Using NotSimpleAgg")
+        self.func = nn.ReLU()
+        # conv merges 2 channels into 1
+        self.conv = nn.Conv1d(2, 1, kernel_size=3, stride=1, padding=1)
+        self.logging = logging
+
+    def forward(self, x):
+        device = x.device
+        x = x.squeeze()
+        batch, ninstance, c = x.shape
+        # 合并 `ninstance - 1` 次
+        for done in range(ninstance - 1):
+            remaining_instance = ninstance - done
+            # 对于每个 batch，计算 batch 内特征向量两两之间的欧氏距离。生成 [batch, N, N] 大小的矩阵。
+            x = x.flatten(start_dim=2)
+            all_dist = torch.cdist(x, x, p=2)
+            if self.logging:
+                logger.info(f"Dist matrix: {all_dist.shape}")
+            # 对角线上的元素为 0，把它们变成最大的元素，这样之后就不会被选中。
+            tiles = torch.tile(
+                torch.eye(remaining_instance, dtype=torch.bool),
+                (batch, 1, 1)).to(device)
+            all_dist[tiles] = torch.max(all_dist) + 1
+            next_batch_data = []
+            for batch_data, batch_dist in zip(x, all_dist):
+                # 找出最小元素所在的行列，也就是需要合并的两个特征。
+                a, b = np.unravel_index(
+                    torch.argmin(batch_dist).cpu(), batch_dist.shape)
+                assert a != b
+                if a > b:
+                    a, b, = b, a
+                # 把这两个特征换到所有特征的最前面。
+                all_rows = list(range(remaining_instance))
+                all_rows[a] = 0
+                all_rows[0] = a
+                all_rows[b] = 1
+                all_rows[1] = b
+                next_batch = batch_data[all_rows, :]
+                next_batch_data.append(next_batch)
+            full_tensor = torch.stack(next_batch_data).to(device)
+            to_merge = full_tensor[:, 0:2, :]
+            remaining = full_tensor[:, 2:, :]
+            # 合并每个 batch 的前两个特征
+            merged_tensor = self.func(self.conv(to_merge))
+            # 生成新的特征
+            x = torch.cat((merged_tensor, remaining), dim=1)
+        return x.squeeze()

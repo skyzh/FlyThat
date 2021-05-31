@@ -38,16 +38,18 @@ def make_weight_sampler(dataset):
     _, weights = generate_weights(dataset)
     return torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
 
+
 class RemedialDataset(Dataset):
     def __init__(self):
         self.imgs = []
         self.labels = []
+
     def __len__(self):
         return len(self.imgs)
 
     def __getitem__(self, idx):
         return (self.imgs[idx], self.labels[idx])
-    
+
     def extend_item(self, img, label_onehot):
         self.imgs.append(img)
         self.labels.append(label_onehot)
@@ -56,7 +58,7 @@ class RemedialDataset(Dataset):
 # IRLbl(y) = max_label_num / label_num[y]
 # mean_IR
 def make_label_set(dataset):
-    # labels_num[i] means the number of the label i which is active in dataset 
+    # labels_num[i] means the number of the label i which is active in dataset
     labels_num = [0] * MAX_LABELS
     ninstances = 0  # the number of instances
     for (_, label) in dataset:
@@ -66,11 +68,11 @@ def make_label_set(dataset):
         ninstances = ninstances + 1
 
     max_label_num = 0.0
-    dsum_label_num = 0.0 # sum_i(1 / labels_num[i])
+    dsum_label_num = 0.0  # sum_i(1 / labels_num[i])
     for num in labels_num:
         dsum_label_num = dsum_label_num + 1 / float(num)
         max_label_num = max(max_label_num, num)
-    
+
     # Known:
     # dsum_label_num = sum(1 / labels_num[y])
     # mean_IR = sum(max_label_num / labels_num[y]) / MAX_LABELS
@@ -104,7 +106,7 @@ def make_scumble_set(dataset, IRLbl, mean_IR, ninstances):
         avg_IRLbl_il = sum_IRLbl_il / float(MAX_LABELS)
         SCUMBLEins[i] = 1 - (mul_IRLbl_il ** dL) / avg_IRLbl_il
         sum_SCUMBLE = sum_SCUMBLE + SCUMBLEins[i]
-    
+
     avg_SCUMBLE = sum_SCUMBLE / ninstances
     return SCUMBLEins, avg_SCUMBLE
 
@@ -115,10 +117,11 @@ def remedial(dataset):
     # IRLbl(y) = max_label_num / label_num[y]
     IRLbl, mean_IR, ninstances = make_label_set(dataset)
     # Calculate SCUMBLE
-    SCUMBLEins, avg_SCUMBLE = make_scumble_set(dataset, IRLbl, mean_IR, ninstances)
-    
+    SCUMBLEins, avg_SCUMBLE = make_scumble_set(
+        dataset, IRLbl, mean_IR, ninstances)
+
     remedial_dataset = RemedialDataset()
-    for i, (imgs, label) in enumerate(dataset):  
+    for i, (imgs, label) in enumerate(dataset):
         if SCUMBLEins[i] > avg_SCUMBLE:
             imgs_1 = imgs.clone()
             label_1 = label.clone()
@@ -127,15 +130,12 @@ def remedial(dataset):
                     label[l] = 0
                 else:
                     label_1[l] = 0
-            
+
             remedial_dataset.extend_item(imgs_1, label_1)
 
         remedial_dataset.extend_item(imgs, label)
 
-    return remedial_dataset  
-
-            
-
+    return remedial_dataset
 
 
 def main(_argv):
@@ -176,4 +176,3 @@ def main(_argv):
     c = remedial_dataset.__getitem__(2)
     print(c[0] == aa)
     print(c[1] == bb)
-    

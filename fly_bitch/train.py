@@ -17,18 +17,31 @@ import numpy as np
 from sklearn.metrics import roc_curve, auc, f1_score, roc_auc_score
 from .dataset import MAX_LABELS
 import torch.autograd.profiler as profiler
+from .focal_loss import FocalLoss
+from tqdm import tqdm
 
 
-def result_threshold(score_array):
-    return np.where(score_array > 0.5, 1, 0)
+def result_threshold(score_array, use_maximum_if_none=False, threshold=0.5):
+    if use_maximum_if_none:
+        data = []
+        for row in score_array:
+            if np.all(row <= threshold):
+                data.append(np.where(row >= np.max(row), 1, 0))
+            else:
+                data.append(row)
+        score_array = np.array(data)
+    return np.where(score_array > threshold, 1, 0)
+
+
+TQDM_BAR_FORMAT = "{desc}:{percentage:3.0f}%|{bar:30}{r_bar}"
 
 
 def train(dataloader, model, loss_fn, optimizer, device):
-    size = len(dataloader.dataset)
     model.train()
+    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT,
+                    desc="Train", leave=False)
 
-    for batch, (X, y) in enumerate(dataloader):
-
+    for X, y in progress:
         X, y = X.to(device), y.to(device)
 
         optimizer.zero_grad()
@@ -42,19 +55,23 @@ def train(dataloader, model, loss_fn, optimizer, device):
         loss.backward()
         optimizer.step()
 
-        loss, current = loss.item(), batch * len(X)
-        print(f"Train Loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        loss = loss.item()
+        progress.set_postfix({"loss": f"{loss:>7f}"})
+
+    progress.close()
 
 
 def test(dataloader, model, loss_fn, device, identifier):
     model.eval()
+    progress = tqdm(dataloader, bar_format=TQDM_BAR_FORMAT,
+                    desc=f"Test on {identifier}", leave=False)
 
     score_list = []
     label_list = []
     loss = 0
 
     with torch.no_grad():
-        for X, y in dataloader:
+        for X, y in progress:
             X, y = X.to(device), y.to(device)
             # TODO: implement this
             # [batch, 30]
@@ -65,41 +82,47 @@ def test(dataloader, model, loss_fn, device, identifier):
 
     score_array = np.concatenate(score_list)
     label_onehot = np.concatenate(label_list)
-    score_array = result_threshold(score_array)
-
-    # auc average=macro
-    auc_ = -1.0
+    # calculate AUC based on continuous value
+    auc_ = 0.0
     try:
         auc_ = roc_auc_score(label_onehot, score_array)
     except ValueError:
-        # 出现label_onehot全是0的情况
         pass
+
+    # calculate f1 on discrete value
+    score_array = result_threshold(score_array, True)
 
     # f1
     f1_macro = f1_score(label_onehot, score_array, average='macro')
-    f1_micro = f1_score(label_onehot, score_array, average='micro')
+    f1_micro = f1_score(label_onehot, score_array, average='samples')
 
-    print(
-        f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Micro {f1_micro}"
+    progress.close()
+
+    logger.info(
+        f"{identifier} Loss {loss}, AUC {auc_}, F1 Macro {f1_macro}, F1 Samples {f1_micro}"
     )
 
     return auc_, f1_macro, f1_micro, loss
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description='Generate PyTorch Dataset')
+    parser = argparse.ArgumentParser(description='Train Model')
     parser.add_argument('--log', type=str, nargs='?', help='Path of tensorboard logs',
                         default=str(Path() / 'runs/logs'))
     parser.add_argument('--model', type=str, nargs='?', help='Model checkpoint path',
                         default=str(Path() / 'runs/model'))
     parser.add_argument('--data', type=str, nargs='?', help='Path of unzip data',
                         default=str(Path() / 'data'))
+    parser.add_argument('--loss', type=str, nargs='?', help='Loss function to be used',
+                        default="BCE")
     parser.add_argument('--batch', type=int, nargs='?', help='Batch size',
                         default=64)
     parser.add_argument('--epoch', type=int, nargs='?', help='Epoch',
                         default=50)
     parser.add_argument('--partial', action='store_true',
                         help='Only use part of the data', default=False)
+    parser.add_argument('--logging', action='store_true',
+                        help='Log model parameters during training', default=False)
     args = parser.parse_args(argv)
     tensorboard_logs_path = Path(args.log)
     model_path = Path(args.model)
@@ -121,17 +144,20 @@ def main(argv):
     tensorboard_logs_path.mkdir(parents=True, exist_ok=True)
 
     if args.partial:
-        logger.warning(f"Partial mode enabled, only use first 10 bags")
+        logger.warning(f"Partial mode enabled, only use first n bags")
 
     device = utils.get_device()
     logger.info(f'Using {device} device')
     # 这里就限制GPU保存，GPU上加载
-    # model = NeuralNetwork(logging=True)
-    model = NeuralNetwork()
-
-    model.to(device)
-    loss_fn = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+    model = nn.DataParallel(NeuralNetwork(logging=args.logging))
+    model = model.to(device)
+    if args.loss == "BCE":
+        logger.info("Using BCE Loss")
+        loss_fn = nn.BCELoss()
+    if args.loss == "focal":
+        logger.info("Using Focal Loss")
+        loss_fn = FocalLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 
     dataset = DrosophilaTrainImageDataset(
@@ -151,25 +177,24 @@ def main(argv):
     writer = SummaryWriter(tensorboard_logs_path)
 
     for t in range(epochs):
-        print(f"Epoch {t+1}")
+        logger.info(f"Epoch {t+1}")
         train(train_dataloader, model, loss_fn,
               optimizer, device)
 
         auc_, f1_macro, f1_micro, loss = test(
             train_dataloader, model, loss_fn, device, 'Train')
-        writer.add_scalar('train_loss', loss, global_step=t)
-        writer.add_scalar('train_auc', auc_, global_step=t)
-        writer.add_scalar('train_f1_macro', f1_macro, global_step=t)
-        writer.add_scalar('train_f1_micro', f1_micro, global_step=t)
+        writer.add_scalar('Loss/train', loss, global_step=t)
+        writer.add_scalar('AUC/train', auc_, global_step=t)
+        writer.add_scalar('F1Macro/train', f1_macro, global_step=t)
+        writer.add_scalar('F1Micro/train', f1_micro, global_step=t)
 
         auc_, f1_macro, f1_micro, loss = test(
             test_dataloader, model, loss_fn, device, 'Test')
-        writer.add_scalar('test_loss', loss, global_step=t)
-        writer.add_scalar('test_auc', auc_, global_step=t)
-        writer.add_scalar('test_f1_macro', f1_macro, global_step=t)
-        writer.add_scalar('test_f1_micro', f1_micro, global_step=t)
-
+        writer.add_scalar('Loss/test', loss, global_step=t)
+        writer.add_scalar('AUC/test', auc_, global_step=t)
+        writer.add_scalar('F1Macro/test', f1_macro, global_step=t)
+        writer.add_scalar('F1Micro/test', f1_micro, global_step=t)
         torch.save(
-            model, os.path.join(args.model, 'model_{}_{}_{}_{}.pkl'.format(str(t), str(auc_), str(f1_macro), str(f1_micro))))
+            model.state_dict(), os.path.join(args.model, 'model_{:02d}_{:.4f}_{:.4f}_{:.4f}.pkl'.format(t, auc_, f1_macro, f1_micro)))
 
     logger.info("Done!")

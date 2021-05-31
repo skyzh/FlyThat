@@ -2,7 +2,7 @@ MODEL_PATH = "runs/model"
 TENSORBOARD_LOGS_PATH = "runs/logs"
 
 test:
-	pytest fly_bitch
+	pytest fly_bitch -vvv
 
 format:
 	autopep8 --in-place --recursive fly_bitch
@@ -21,3 +21,9 @@ run_model:
 
 run_sampler:
 	python -m fly_bitch sampler
+
+run_loss:
+	python -m fly_bitch loss
+
+clean:
+	rm -rf $(shell pwd)/runs
