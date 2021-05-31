@@ -8,6 +8,8 @@ import argparse
 from .feature_extractor import feature_transformer
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
+from .sampler import make_weight_sampler
+
 import os
 import time
 from tensorboardX import SummaryWriter
@@ -152,9 +154,12 @@ def main(argv):
     if args.loss == "BCE":
         logger.info("Using BCE Loss")
         loss_fn = nn.BCELoss()
-    if args.loss == "focal":
+    elif args.loss == "focal":
         logger.info("Using Focal Loss")
         loss_fn = FocalLoss()
+    else:
+        logger.error(f"Unsupported loss function {args.loss}")
+        return
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = args.epoch
 
@@ -165,10 +170,12 @@ def main(argv):
     test_length = dataset_length - train_length
     train_dataset, test_dataset = torch.utils.data.random_split(
         dataset, (train_length, test_length))
+    train_sampler = make_weight_sampler(train_dataset)
+    test_sampler = make_weight_sampler(test_dataset)
     train_dataloader = DataLoader(
-        train_dataset, batch_size=args.batch, shuffle=True)
+        train_dataset, batch_size=args.batch, sampler=train_sampler)
     test_dataloader = DataLoader(
-        test_dataset, batch_size=args.batch, shuffle=True)
+        test_dataset, batch_size=args.batch, sampler=test_sampler)
 
     writer = SummaryWriter(tensorboard_logs_path)
 

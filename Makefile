@@ -19,6 +19,9 @@ run_dataset:
 run_model:
 	python -m fly_bitch model
 
+run_sampler:
+	python -m fly_bitch sampler
+
 run_loss:
 	python -m fly_bitch loss
 
