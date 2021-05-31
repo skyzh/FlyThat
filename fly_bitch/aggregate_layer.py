@@ -190,7 +190,7 @@ class NotSimpleAgg(nn.Module):
     def forward(self, x):
         device = x.device
         x = x.squeeze()
-        batch, ninstance, c, w, h = x.shape
+        batch, ninstance, c = x.shape
         # 合并 `ninstance - 1` 次
         for done in range(ninstance - 1):
             remaining_instance = ninstance - done
