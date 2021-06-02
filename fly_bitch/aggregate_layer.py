@@ -95,10 +95,10 @@ class Agg_666(nn.Module):
 
     def forward(self, x):
         # (batch, items, c, w, h)
-        batch, items, c, w, h = x.shape[0]
+        batch, items, c, w, h = x.shape
         cwh = c * w * h
-        mask = torch.zeros(items).repeat(batch, 1)
-        src_ = torch.ones(batch).unsqueeze(1) * np.inf   # static const
+        mask = torch.zeros(items).repeat(batch, 1).cuda()
+        src_ = torch.ones(batch).unsqueeze(1).cuda() * np.inf   # static const
         # items 个东东要聚合 items-1 次
         n = items
         for _ in range(1, n):
@@ -115,8 +115,7 @@ class Agg_666(nn.Module):
             # sq_dist [batch, items, items] , sq_dist[9][2][3] 表示第10组中第3和第4个item之间的距离
             # 由于sq_dist[k][i][i] = 0，但要忽略它，需要把对角线设置为inf，即加上对角线为inf的矩阵
             sq_dist = sq_dist + \
-                torch.diag_embed(torch.ones(items) *
-                                 np.inf).repeat(batch, 1, 1)
+                torch.diag_embed(torch.ones(items) * np.inf).repeat(batch, 1, 1).cuda()
             mask_row = mask.unsqueeze(1).repeat(1, items, 1)
             mask_col = mask.unsqueeze(2).repeat(1, 1, items)
             mask_matrix = mask_row + mask_col
@@ -150,7 +149,7 @@ class Agg_666(nn.Module):
 
             # 对mask增加，然后往x里头加入X
             # 对mask添加inf表示删去被用过的index_i和index_j
-            add_ = torch.zeros(1).repeat(batch, 1)
+            add_ = torch.zeros(1).repeat(batch, 1).cuda()
             mask = torch.cat((mask, add_), dim=1)
             mask = mask.scatter(1, index_i, src_)
             mask = mask.scatter(1, index_j, src_)
@@ -163,7 +162,7 @@ class Agg_666(nn.Module):
             items = x.shape[1]
         # end aggregate
 
-        return x[:, items-1]
+        return x[:, items-1].reshape(batch, c)
 
 
 class SimpleAgg(nn.Module):
