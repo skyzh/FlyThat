@@ -13,7 +13,15 @@ class NeuralNetwork(nn.Module):
         self.feature = FeatureExtractionLayer()
         self.aggregate = aggregate_layer.Agg_666()#NotSimpleAgg(logging=logging)
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(1000, 256),
+            nn.Linear(20480, 4096),
+            nn.BatchNorm1d(4096),
+            nn.LeakyReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(4096, 1024),
+            nn.BatchNorm1d(1024),
+            nn.LeakyReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(1024, 256),
             nn.BatchNorm1d(256),
             nn.LeakyReLU(),
             nn.Dropout(0.1),
@@ -38,8 +46,8 @@ class NeuralNetwork(nn.Module):
             logger.info(f'After feature extraction: {x.shape}')
 
         # # Aggregate on each batch
-        _, c = x.shape
-        x = x.reshape(batch_size, ninstance, c, 1, 1)
+        _, c, h, w = x.shape
+        x = x.reshape(batch_size, ninstance, c, h, w)
 
         if self.logging:
             logger.info(f'Before feature aggregate: {x.shape}')

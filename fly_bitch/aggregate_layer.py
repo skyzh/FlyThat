@@ -162,7 +162,7 @@ class Agg_666(nn.Module):
             items = x.shape[1]
         # end aggregate
 
-        return x[:, items-1].reshape(batch, c)
+        return x[:, items-1].reshape(batch, cwh)
 
 
 class SimpleAgg(nn.Module):
