@@ -11,7 +11,7 @@ class NeuralNetwork(nn.Module):
     def __init__(self, logging=False):
         super(NeuralNetwork, self).__init__()
         self.feature = FeatureExtractionLayer()
-        self.aggregate = aggregate_layer.Agg_666()#NotSimpleAgg(logging=logging)
+        self.aggregate = aggregate_layer.SimpleAgg()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(1000, 256),
             nn.BatchNorm1d(256),
