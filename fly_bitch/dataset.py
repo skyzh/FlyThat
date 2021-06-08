@@ -11,7 +11,7 @@ from torch import nn
 import torch
 from PIL import Image
 
-MAX_IMAGE_TENSOR = 24
+MAX_IMAGE_TENSOR = 16
 IMG_WIDTH = 320
 IMG_HEIGHT = 128
 IMG_CHANNEL = 3
