@@ -1,5 +1,6 @@
-# FlyBitch
-A fork of FlyIt
+# FlyThat
+
+Code for Kaggle in-class competition
 
 ## Training
 
