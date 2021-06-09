@@ -1,4 +1,4 @@
-from fly_bitch.dataset import DrosophilaTestImageDataset
+from fly_that.dataset import DrosophilaTestImageDataset
 from pathlib import Path
 import argparse
 from loguru import logger
@@ -119,6 +119,8 @@ def main(argv):
                         default=64)
     parser.add_argument('--partial', action='store_true',
                         help='Only use part of the data', default=False)
+    parser.add_argument('--dryrun', action='store_true',
+                        help='Only show the metrics', default=False)
 
     args = parser.parse_args(argv)
     model_folder = args.model or DEFAULT_MODEL_PATH
@@ -136,4 +138,5 @@ def main(argv):
     logger.info(f"Found {len(models)} models")
     models.sort(key=sort_by_f1, reverse=True)
     log_models(models)
-    gen_data(args, models[0])
+    if not args.dryrun:
+        gen_data(args, models[0])
