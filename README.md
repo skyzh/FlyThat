@@ -17,7 +17,7 @@ Code for Kaggle in-class competition
 ## Evaluate a model
 
 ```bash
-./evaluate.sh --model saved_runs/05-20-trivial-model-02/model --batch 16
+./evaluate.sh --model saved_runs/05-30-new-structure/model --batch 16
 ```
 
 ## Submit to Kaggle
@@ -25,5 +25,5 @@ Code for Kaggle in-class competition
 You need to `pip3 install kaggle` and login first.
 
 ```bash
-./submit.sh saved_runs/05-20-trivial-model-02  "First submission"
+./submit.sh saved_runs/05-30-new-structure  "First submission"
 ```
